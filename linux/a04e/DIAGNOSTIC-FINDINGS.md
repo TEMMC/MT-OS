@@ -1,8 +1,9 @@
 # A04e diagnostic findings
 
-Sources: user-supplied read-only report `device-report.txt` (generated
-2026-11-03 13:15:57) and user-supplied `/proc/config.gz` captured from the
-running handset. Neither source contains partition contents.
+Sources: user-supplied read-only `device-report.txt` (generated
+2026-11-03 13:15:57), user-supplied running `/proc/config.gz`, and
+user-reported read-only partition/property output. No partition contents
+have been modified.
 
 ## Confirmed handset identity and platform
 
@@ -30,25 +31,37 @@ byte-for-byte identical.** This confirms the correct starting defconfig for
 the downstream track. It does not prove that the kernel builds with a current
 postmarketOS toolchain or boots postmarketOS userspace.
 
-## Relevant observed partitions
+## Relevant observed partitions and sizes
 
-The report maps these by-name symlinks:
+The report maps these by-name symlinks; the user subsequently measured the
+following block-device sizes with `blockdev --getsize64` (read-only):
 
-| Partition | Block device |
-|---|---|
-| boot | `/dev/block/mmcblk0p37` |
-| recovery | `/dev/block/mmcblk0p38` |
-| dtbo | `/dev/block/mmcblk0p12` |
-| vbmeta | `/dev/block/mmcblk0p13` |
-| vbmeta_system | `/dev/block/mmcblk0p39` |
-| vbmeta_vendor | `/dev/block/mmcblk0p40` |
-| super | `/dev/block/mmcblk0p44` |
-| userdata | `/dev/block/mmcblk0p50` |
+| Partition | Block device | Reported size |
+|---|---|---:|
+| boot | `/dev/block/mmcblk0p37` | 33,554,432 bytes (32 MiB) |
+| recovery | `/dev/block/mmcblk0p38` | 38,797,312 bytes (37 MiB) |
+| dtbo | `/dev/block/mmcblk0p12` | 8,388,608 bytes (8 MiB) |
+| vbmeta | `/dev/block/mmcblk0p13` | 65,536 bytes (64 KiB) |
+| vbmeta_system | `/dev/block/mmcblk0p39` | 65,536 bytes (64 KiB) |
+| vbmeta_vendor | `/dev/block/mmcblk0p40` | 65,536 bytes (64 KiB) |
 
-This is evidence of current by-name mappings only. The report contains no
-partition sizes, raw image headers, bootloader environment, or proof of a
-safe alternate boot path. Do not infer that the phone is A-only solely from
-these names.
+The report also maps `super` to `/dev/block/mmcblk0p44` and `userdata`
+to `/dev/block/mmcblk0p50`; their sizes were not measured in this command.
+
+## Bootloader and verified boot properties
+
+User-reported property output:
+
+- `ro.boot.slot_suffix`: empty
+- `ro.boot.flash.locked`: `0`
+- `ro.boot.verifiedbootstate`: `orange`
+- `ro.boot.vbmeta.device_state`: empty
+
+The `flash.locked=0` property reports an unlocked bootloader state, and
+`verifiedbootstate=orange` is consistent with that state. These are Android
+boot properties, not an independent bootloader screen verification.
+An empty slot suffix does **not** establish A-only partitioning or prove that
+there is no slot mechanism.
 
 ## Display and input
 
@@ -61,9 +74,10 @@ these names.
 
 ## Outstanding evidence required before a real boot image recipe
 
-1. Read-only boot and recovery image header metadata and partition sizes.
-2. DTB/DTBO extraction and compatible-string comparison.
-3. Bootloader unlock state and verified recovery/download-mode procedure.
+1. Read-only boot/recovery image header metadata and DTB/DTBO extraction.
+2. DTB/DTBO compatible-string and panel/touch binding comparison.
+3. Independent verification of bootloader unlock and safe recovery/download
+   mode procedure.
 4. Kernel build compatibility with a current postmarketOS Alpine toolchain.
 5. A diagnostic initramfs boot test before any rootfs or persistent partition
    write is considered.
