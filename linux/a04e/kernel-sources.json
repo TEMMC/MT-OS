@@ -1,0 +1,35 @@
+{
+  "device": "Samsung Galaxy A04e",
+  "model": "SM-A042F",
+  "codename": "a04e",
+  "downstream": {
+    "repository": "https://github.com/ravindu644/android_kernel_a042f.git",
+    "ref": "a04e",
+    "commit": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58",
+    "kernel_version": "4.19.191",
+    "defconfig": "a04e_defconfig",
+    "status": "candidate-only",
+    "notes": [
+      "Repository is archived; pin exact commit for reproducibility.",
+      "The defconfig and kernel source are Android vendor-kernel inputs, not a validated postmarketOS kernel configuration.",
+      "No boot image or partition layout assumptions are made."
+    ]
+  },
+  "mainline": {
+    "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+    "ref": "master",
+    "status": "research-only",
+    "notes": [
+      "No verified MT6765/A04e mainline device tree or bootable configuration has been established.",
+      "Do not treat a generic mainline kernel build as bootable on this handset."
+    ]
+  },
+  "policy": {
+    "build_environment": "github-actions",
+    "userspace": "postmarketOS-edge",
+    "interface": "phosh",
+    "build_method": "pmbootstrap+pmaports+Alpine APKBUILD",
+    "flashable": false,
+    "allow_partition_writes": false
+  }
+}
