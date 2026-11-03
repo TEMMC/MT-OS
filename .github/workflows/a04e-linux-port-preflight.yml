@@ -47,6 +47,32 @@ jobs:
       - name: Check diagnostic script syntax
         run: bash -n linux/a04e/scripts/collect-a04e.sh
 
+
+      - name: Validate pinned kernel tracks
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("linux/a04e/kernel-sources.json")
+          data = json.loads(p.read_text())
+          downstream = data["downstream"]
+          assert downstream["repository"].endswith("android_kernel_a042f.git")
+          assert downstream["commit"] == "7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
+          assert downstream["kernel_version"] == "4.19.191"
+          assert downstream["defconfig"] == "a04e_defconfig"
+          assert data["policy"]["build_environment"] == "github-actions"
+          assert data["policy"]["interface"] == "phosh"
+          assert data["policy"]["flashable"] is False
+          assert data["mainline"]["status"] == "research-only"
+          print("Kernel source pins and safety gates valid.")
+          PY
+
+      - name: Verify pmaports overlay status
+        run: |
+          grep -q "pmbootstrap" linux/a04e/pmaports/README.md
+          grep -q "No device package" linux/a04e/pmaports/README.md
+          echo "pmaports overlay is documented; no unverified package is built."
+
       - name: Check documentation safety statements
         run: |
           grep -q "no flashable image exists yet" linux/a04e/README.md
