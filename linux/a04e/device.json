@@ -1,0 +1,27 @@
+{
+  "project": "MT Linux",
+  "device_name": "Samsung Galaxy A04e",
+  "codename": "a04e",
+  "supported_model": "SM-A042F",
+  "architecture": "aarch64",
+  "soc": "MediaTek MT6765",
+  "gpu": "PowerVR Rogue GE8320 / Doma",
+  "android_system_version": 14,
+  "vendor_interface_android_version": 12,
+  "vendor_vndk": 31,
+  "stock_kernel": "4.19.191",
+  "boot_layout": "A-only (reported; verify partition map before boot work)",
+  "initial_distribution": "postmarketOS",
+  "initial_interface": "Phosh",
+  "status": "bring-up-research",
+  "flashable": false,
+  "verified_linux_boot": false,
+  "required_validation": [
+    "exact board and hardware revision",
+    "bootloader unlock and download-mode recovery path",
+    "boot image and DTBO layout",
+    "mainline MT6765 kernel feasibility",
+    "display panel and touchscreen drivers",
+    "storage, USB, Wi-Fi, audio and power management"
+  ]
+}
