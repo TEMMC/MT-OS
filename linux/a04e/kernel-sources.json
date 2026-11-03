@@ -12,8 +12,11 @@
     "notes": [
       "Repository is archived; pin exact commit for reproducibility.",
       "The defconfig and kernel source are Android vendor-kernel inputs, not a validated postmarketOS kernel configuration.",
-      "No boot image or partition layout assumptions are made."
-    ]
+      "No boot image or partition layout assumptions are made.",
+      "Confirmed in arch/arm64/configs at the pinned source branch; a04e_defconfig is 159317 bytes and a04e_00_defconfig is 22500 bytes.",
+      "The uploaded live-device report confirms kernel 4.19.191 but does not include /proc/config.gz, so the exact running configuration is not yet compared with this defconfig."
+    ],
+    "additional_defconfig": "a04e_00_defconfig"
   },
   "mainline": {
     "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
@@ -30,6 +33,7 @@
     "interface": "phosh",
     "build_method": "pmbootstrap+pmaports+Alpine APKBUILD",
     "flashable": false,
-    "allow_partition_writes": false
+    "allow_partition_writes": false,
+    "device_report_generated": "2026-11-03T13:15:57"
   }
 }
