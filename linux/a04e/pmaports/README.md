@@ -18,9 +18,12 @@ postmarketOS `pmaports`. It follows the upstream split between:
 
 The downstream candidate is pinned in `../kernel-sources.json` to the
 archived A042F Samsung kernel repository and its `a04e` branch commit.
-Its reported kernel base is 4.19.191 and its device defconfig is
-`a04e_defconfig`. This is a research input only. It has not yet been
-converted into a verified postmarketOS kernel package.
+Its reported kernel base is 4.19.191. The source tree contains both
+`a04e_defconfig` and `a04e_00_defconfig`; the larger `a04e_defconfig` is the
+initial candidate. The uploaded live-device report confirms the kernel release
+but does not include `/proc/config.gz`, so the source defconfig has not yet
+been compared with the running configuration. This remains a research input,
+not a verified postmarketOS kernel package.
 
 The mainline track is kept separate. It must not inherit vendor-kernel
 boot assumptions, patches, or configuration. A mainline port needs a
@@ -29,14 +32,19 @@ touch and bootloader hand-off support.
 
 ## Why the APKBUILD/deviceinfo are not fabricated yet
 
-The current handset evidence does not establish the exact boot image format,
-DTB/DTBO handling, partition names, panel/touch binding, or safe recovery
-procedure. Those values control the device package and boot-deploy behavior.
+The uploaded handset report now establishes by-name mappings for boot
+(`mmcblk0p37`), recovery (`mmcblk0p38`), DTBO (`mmcblk0p12`), vbmeta
+(`mmcblk0p13`), super (`mmcblk0p44`) and userdata (`mmcblk0p50`). It does not
+provide partition sizes, boot-image headers, DTB/DTBO contents, panel/touch
+bindings, or a verified safe recovery procedure. Those details control the
+device package and boot-deploy behavior.
 Inventing them could create an image that looks complete but cannot boot, or
 could direct a future flashing step at the wrong partition.
 
-The next valid step is to collect and review the A04e diagnostic report,
-then add the device package and downstream kernel package with real values.
+The diagnostic findings are recorded in `../DIAGNOSTIC-FINDINGS.md`. The next
+valid step is to compare the running `/proc/config.gz` with the source defconfig
+and inspect boot/recovery image metadata read-only. Then add the device package
+and downstream kernel package with verified values.
 Only after that should CI run `pmbootstrap build`, `pmbootstrap install`,
 and `pmbootstrap export`.
 
