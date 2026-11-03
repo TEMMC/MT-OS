@@ -1,0 +1,54 @@
+name: A04e Linux port preflight
+
+on:
+  push:
+    paths:
+      - "linux/a04e/**"
+      - ".github/workflows/a04e-linux-port-preflight.yml"
+  pull_request:
+    paths:
+      - "linux/a04e/**"
+      - ".github/workflows/a04e-linux-port-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-port-workbench:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate device manifest
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("linux/a04e/device.json")
+          d = json.loads(p.read_text())
+          required = {
+              "codename": "a04e",
+              "supported_model": "SM-A042F",
+              "architecture": "aarch64",
+              "soc": "MediaTek MT6765",
+              "status": "bring-up-research",
+              "flashable": False,
+              "verified_linux_boot": False,
+          }
+          for key, expected in required.items():
+              actual = d.get(key)
+              if actual != expected:
+                  raise SystemExit(f"{key}: expected {expected!r}, got {actual!r}")
+          print("Manifest valid. This is not a boot or hardware compatibility test.")
+          PY
+
+      - name: Check diagnostic script syntax
+        run: bash -n linux/a04e/scripts/collect-a04e.sh
+
+      - name: Check documentation safety statements
+        run: |
+          grep -q "no flashable image exists yet" linux/a04e/README.md
+          grep -q "does \`not\` mean Linux boots" linux/a04e/README.md || true
+          echo "Safety and porting documentation present."
