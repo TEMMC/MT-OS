@@ -8,13 +8,20 @@
     "commit": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58",
     "kernel_version": "4.19.191",
     "defconfig": "a04e_defconfig",
-    "status": "candidate-only",
+    "status": "live-config-byte-for-byte-match",
+    "live_config": {
+      "source": "user-uploaded /proc/config.gz",
+      "uncompressed_bytes": 159317,
+      "git_blob_sha1": "c63ca74d9e6e595d215d12b735facf888c1eb151",
+      "matches_source_defconfig": true
+    },
     "notes": [
-      "Repository is archived; pin exact commit for reproducibility.",
-      "The defconfig and kernel source are Android vendor-kernel inputs, not a validated postmarketOS kernel configuration.",
+      "Repository is archived; exact commit is pinned for reproducibility.",
+      "The uploaded running-kernel configuration is byte-for-byte identical to arch/arm64/configs/a04e_defconfig at the pinned source branch.",
+      "This validates the defconfig match, not postmarketOS bootability or compatibility with current Alpine toolchains.",
+      "The defconfig and kernel source remain Android vendor-kernel inputs requiring postmarketOS adaptation.",
       "No boot image or partition layout assumptions are made.",
-      "Confirmed in arch/arm64/configs at the pinned source branch; a04e_defconfig is 159317 bytes and a04e_00_defconfig is 22500 bytes.",
-      "The uploaded live-device report confirms kernel 4.19.191 but does not include /proc/config.gz, so the exact running configuration is not yet compared with this defconfig."
+      "The additional a04e_00_defconfig exists but is not selected."
     ],
     "additional_defconfig": "a04e_00_defconfig"
   },
