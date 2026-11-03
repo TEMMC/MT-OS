@@ -10,7 +10,7 @@
   "vendor_interface_android_version": 12,
   "vendor_vndk": 31,
   "stock_kernel": "4.19.191",
-  "boot_layout": "A-only (reported; verify partition map before boot work)",
+  "boot_layout": "single-slot partition naming observed (not verified as A-only)",
   "initial_distribution": "postmarketOS",
   "initial_interface": "Phosh",
   "status": "bring-up-research",
@@ -19,9 +19,37 @@
   "required_validation": [
     "exact board and hardware revision",
     "bootloader unlock and download-mode recovery path",
-    "boot image and DTBO layout",
+    "boot image header/version, ramdisk format, DTB/DTBO relationship and partition sizes",
+    "read-only capture of /proc/config.gz and comparison with source defconfig",
     "mainline MT6765 kernel feasibility",
-    "display panel and touchscreen drivers",
+    "display panel and touchscreen driver bindings",
     "storage, USB, Wi-Fi, audio and power management"
-  ]
+  ],
+  "observed_partitions": {
+    "boot": "/dev/block/mmcblk0p37",
+    "recovery": "/dev/block/mmcblk0p38",
+    "dtbo": "/dev/block/mmcblk0p12",
+    "vbmeta": "/dev/block/mmcblk0p13",
+    "vbmeta_system": "/dev/block/mmcblk0p39",
+    "vbmeta_vendor": "/dev/block/mmcblk0p40",
+    "super": "/dev/block/mmcblk0p44",
+    "userdata": "/dev/block/mmcblk0p50"
+  },
+  "observed_hardware": {
+    "device_tree_compatible": [
+      "mediatek,MT6765"
+    ],
+    "touchscreen": [
+      "mtk-tpd",
+      "jadard-touchscreen"
+    ],
+    "gpu_driver": "pvrsrvkm",
+    "gpu_device": "mediatek,doma",
+    "framebuffer": "mtkfb",
+    "drm_nodes": [
+      "card0",
+      "renderD128"
+    ],
+    "kernel_config_available_at": "/proc/config.gz (not included in uploaded report)"
+  }
 }
