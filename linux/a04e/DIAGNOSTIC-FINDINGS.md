@@ -44,7 +44,7 @@ following block-device sizes with `blockdev --getsize64` (read-only):
 | vbmeta | `/dev/block/mmcblk0p13` | 65,536 bytes (64 KiB) |
 | vbmeta_system | `/dev/block/mmcblk0p39` | 65,536 bytes (64 KiB) |
 | vbmeta_vendor | `/dev/block/mmcblk0p40` | 65,536 bytes (64 KiB) |
-
+ 
 The report also maps `super` to `/dev/block/mmcblk0p44` and `userdata`
 to `/dev/block/mmcblk0p50`; their sizes were not measured in this command.
 
@@ -63,6 +63,21 @@ boot properties, not an independent bootloader screen verification.
 An empty slot suffix does **not** establish A-only partitioning or prove that
 there is no slot mechanism.
 
+## Read-only boot and DTBO dumps — acquired, not yet inspected
+
+The user reports successfully copying the complete boot and DTBO partitions
+to shared storage using `dd if=...` (read-only source access):
+
+| Dump | Source partition | Size | SHA-256 |
+|---|---|---:|---|
+| `a04e-boot.img` | `mmcblk0p37` | 33,554,432 bytes | `797db41a6d3cfe9056db60e841b852c76206b01d4715ff58331f2b8b9fc86a80` |
+| `a04e-dtbo.img` | `mmcblk0p12` | 8,388,608 bytes | `79eb75c03bdca14444e49c991a50c19242b91de38910507412f7451c1e2c350d` |
+
+These checksums and sizes are user-reported command output. The image files
+themselves have not yet been attached to this conversation or parsed. Do not
+infer a boot image header version, ramdisk format, DTB location, or DTBO table
+contents from the filenames or hashes alone.
+
 ## Display and input
 
 - Touch input names: `mtk-tpd`, `jadard-touchscreen`
@@ -74,13 +89,12 @@ there is no slot mechanism.
 
 ## Outstanding evidence required before a real boot image recipe
 
-1. Read-only boot/recovery image header metadata and DTB/DTBO extraction.
-2. DTB/DTBO compatible-string and panel/touch binding comparison.
-3. Independent verification of bootloader unlock and safe recovery/download
-   mode procedure.
-4. Kernel build compatibility with a current postmarketOS Alpine toolchain.
-5. A diagnostic initramfs boot test before any rootfs or persistent partition
-   write is considered.
+1. Parse boot/recovery image header metadata and extract/inspect DTB/DTBO.
+2. Compare DTB/DTBO compatible strings and panel/touch bindings.
+3. Independently verify bootloader unlock and safe recovery/download mode.
+4. Test kernel build compatibility with a current postmarketOS Alpine toolchain.
+5. Perform a diagnostic initramfs boot test before any rootfs or persistent
+   partition write is considered.
 
 No partition writes are authorized by this porting work. No flashable image
 has been produced or verified.
