@@ -50,8 +50,8 @@ build() {
 
 	local clang
 	local cross_gcc
-	clang="$(find "$srcdir" -type f -path '*/bin/clang' -print -quit)"
-	cross_gcc="$(find "$srcdir" -type f -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
+	clang="$(find "$srcdir" -path '*/bin/clang' -print -quit)"
+	cross_gcc="$(find "$srcdir" -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
 	[ -x "$clang" ] || die "Pinned clang-r383902 compiler was not found"
 	[ -x "$cross_gcc" ] || die "Pinned AArch64 GNU cross compiler was not found"
 
