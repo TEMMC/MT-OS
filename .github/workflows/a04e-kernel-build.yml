@@ -52,8 +52,8 @@ jobs:
           tar -xf "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" -C "$RUNNER_TEMP/a04e-toolchains"
           SRC="$RUNNER_TEMP/a04e-src/android_kernel_a042f-$COMMIT"
           test -f "$SRC/Makefile"
-          CLANG="$(find "$RUNNER_TEMP/a04e-toolchains" -type f -path '*/bin/clang' -print -quit)"
-          CROSS_GCC="$(find "$RUNNER_TEMP/a04e-toolchains" -type f -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
+          CLANG="$(find "$RUNNER_TEMP/a04e-toolchains" -path '*/bin/clang' -print -quit)"
+          CROSS_GCC="$(find "$RUNNER_TEMP/a04e-toolchains" -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
           test -x "$CLANG"
           test -x "$CROSS_GCC"
           {
