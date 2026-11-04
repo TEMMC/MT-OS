@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - "linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
-      - ".github/workflows/a04e-kernel-build.yml"
   pull_request:
     paths:
       - "linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
