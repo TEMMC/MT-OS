@@ -61,11 +61,12 @@ jobs:
           kernel = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/APKBUILD").read_text()
           device = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/APKBUILD").read_text()
           fragment = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64").read_text()
+          toolchain = json.loads(Path("linux/a04e/pmaports/toolchains.json").read_text())
           checks = {
               "flashing disabled": 'deviceinfo_flash_method="none"' in deviceinfo,
               "DRM not falsely advertised": 'deviceinfo_drm="false"' in deviceinfo,
               "kernel source commit pinned": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58" in kernel,
-              "documented Clang pinned": "clang-r383902" in kernel,
+              "Clang pin recorded in toolchain manifest": toolchain["compiler"]["name"] == "clang-r383902",
               "device package depends on kernel": "linux-samsung-a04e" in device,
               "devtmpfs enabled for initramfs": "CONFIG_DEVTMPFS=y" in fragment,
           }
