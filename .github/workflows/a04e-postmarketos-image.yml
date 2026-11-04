@@ -62,9 +62,9 @@ jobs:
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/pmbootstrap-init.exp" <<'EXPECT'
-          set timeout 900
+          set timeout 240
           log_user 1
-          spawn pmbootstrap --aports $env(A04E_PMAPORTS) --work $env(A04E_PMWORK) --jobs 2 init
+          spawn pmbootstrap --details-to-stdout --aports $env(A04E_PMAPORTS) --work $env(A04E_PMWORK) --jobs 2 init
           expect {
             -re {Work path.*:} { send "\r"; exp_continue }
             -re {Device.*:} { send "samsung-a04e\r"; exp_continue }
