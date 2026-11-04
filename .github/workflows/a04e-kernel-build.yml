@@ -1,0 +1,108 @@
+name: A04e downstream kernel build
+
+on:
+  push:
+    paths:
+      - "linux/a04e/**"
+      - ".github/workflows/a04e-kernel-build.yml"
+  pull_request:
+    paths:
+      - "linux/a04e/**"
+      - ".github/workflows/a04e-kernel-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-a04e-kernel:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: Check out MT-OS
+        uses: actions/checkout@v4
+
+      - name: Install host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential cpio flex libelf-dev \
+            libncurses-dev libssl-dev python3 rsync xz-utils zlib1g-dev
+
+      - name: Download pinned kernel source and toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMIT="7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
+          mkdir -p "$RUNNER_TEMP/a04e-src" "$RUNNER_TEMP/a04e-toolchains"
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://github.com/ravindu644/android_kernel_a042f/archive/$COMMIT.tar.gz" \
+            -o "$RUNNER_TEMP/a04e-src/kernel.tar.gz"
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902.tar.gz" \
+            -o "$RUNNER_TEMP/a04e-toolchains/clang-r383902.tar.gz"
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" \
+            -o "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
+          (
+            cd "$RUNNER_TEMP/a04e-toolchains"
+            sha256sum *.tar.* | tee SHA256SUMS.txt
+          )
+          tar -xf "$RUNNER_TEMP/a04e-src/kernel.tar.gz" -C "$RUNNER_TEMP/a04e-src"
+          tar -xf "$RUNNER_TEMP/a04e-toolchains/clang-r383902.tar.gz" -C "$RUNNER_TEMP/a04e-toolchains"
+          tar -xf "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" -C "$RUNNER_TEMP/a04e-toolchains"
+          SRC="$RUNNER_TEMP/a04e-src/android_kernel_a042f-$COMMIT"
+          test -f "$SRC/Makefile"
+          CLANG="$(find "$RUNNER_TEMP/a04e-toolchains" -type f -path '*/bin/clang' -print -quit)"
+          CROSS_GCC="$(find "$RUNNER_TEMP/a04e-toolchains" -type f -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
+          test -x "$CLANG"
+          test -x "$CROSS_GCC"
+          {
+            echo "A04E_SRC=$SRC"
+            echo "A04E_CLANG=$CLANG"
+            echo "A04E_CROSS_COMPILE=${CROSS_GCC%gcc}"
+          } >> "$GITHUB_ENV"
+
+      - name: Configure the stock-matched kernel
+        run: |
+          set -euo pipefail
+          export ARCH=arm64
+          export ANDROID_MAJOR_VERSION=r
+          make -C "$A04E_SRC" O=out CC="$A04E_CLANG" \
+            CROSS_COMPILE="$A04E_CROSS_COMPILE" \
+            CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
+            CONFIG_SECTION_MISMATCH_WARN_ONLY=y a04e_defconfig
+          "$A04E_SRC/scripts/kconfig/merge_config.sh" -m -O "$A04E_SRC/out" \
+            "$A04E_SRC/out/.config" \
+            "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/testing/linux-samsung-a04e/config-samsung-a04e.aarch64"
+          make -C "$A04E_SRC" O=out ARCH=arm64 CC="$A04E_CLANG" \
+            CROSS_COMPILE="$A04E_CROSS_COMPILE" \
+            CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
+            CONFIG_SECTION_MISMATCH_WARN_ONLY=y olddefconfig
+
+      - name: Compile Linux 4.19.191 for A04e
+        run: |
+          set -euo pipefail
+          export ARCH=arm64
+          export ANDROID_MAJOR_VERSION=r
+          make -C "$A04E_SRC" O=out ARCH=arm64 CC="$A04E_CLANG" \
+            CROSS_COMPILE="$A04E_CROSS_COMPILE" \
+            CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
+            CONFIG_SECTION_MISMATCH_WARN_ONLY=y \
+            KBUILD_BUILD_VERSION=1-postmarketOS -j2
+          test -s "$A04E_SRC/out/arch/arm64/boot/Image.gz"
+          file "$A04E_SRC/out/arch/arm64/boot/Image.gz"
+          sha256sum "$A04E_SRC/out/arch/arm64/boot/Image.gz" \
+            | tee "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256SUM.txt"
+          mkdir -p "$RUNNER_TEMP/a04e-output"
+          cp "$A04E_SRC/out/arch/arm64/boot/Image.gz" "$RUNNER_TEMP/a04e-output/"
+          cp "$A04E_SRC/out/.config" "$RUNNER_TEMP/a04e-output/kernel.config"
+          cp "$RUNNER_TEMP/a04e-toolchains/SHA256SUMS.txt" "$RUNNER_TEMP/a04e-output/"
+          cp "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256SUM.txt" "$RUNNER_TEMP/a04e-output/"
+
+      - name: Upload kernel build diagnostics (not a flashable image)
+        uses: actions/upload-artifact@v4
+        with:
+          name: a04e-kernel-build-diagnostics
+          path: ${{ runner.temp }}/a04e-output/
+          if-no-files-found: error
+          retention-days: 14
