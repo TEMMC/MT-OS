@@ -1,0 +1,27 @@
+{
+  "kernel_source": {
+    "repository": "https://github.com/ravindu644/android_kernel_a042f",
+    "commit": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58",
+    "kernel_version": "4.19.191",
+    "defconfig": "a04e_defconfig"
+  },
+  "compiler": {
+    "name": "clang-r383902",
+    "url": "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902.tar.gz"
+  },
+  "cross_toolchain": {
+    "name": "arm-gnu-toolchain-14.2.rel1",
+    "target": "aarch64-none-linux-gnu",
+    "url": "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
+  },
+  "environment": {
+    "ANDROID_MAJOR_VERSION": "r",
+    "ARCH": "arm64",
+    "CLANG_TRIPLE": "aarch64-linux-gnu-",
+    "output": "arch/arm64/boot/Image.gz"
+  },
+  "integrity": {
+    "status": "pending",
+    "reason": "The upstream toolchain release page does not publish checksums; CI must record and review archive SHA-256 values before these binaries are accepted for a release."
+  }
+}
