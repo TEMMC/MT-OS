@@ -57,10 +57,10 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          deviceinfo = Path("linux/a04e/pmaports/device/testing/device-samsung-a04e/deviceinfo").read_text()
-          kernel = Path("linux/a04e/pmaports/device/testing/linux-samsung-a04e/APKBUILD").read_text()
-          device = Path("linux/a04e/pmaports/device/testing/device-samsung-a04e/APKBUILD").read_text()
-          fragment = Path("linux/a04e/pmaports/device/testing/linux-samsung-a04e/config-samsung-a04e.aarch64").read_text()
+          deviceinfo = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/deviceinfo").read_text()
+          kernel = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/APKBUILD").read_text()
+          device = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/APKBUILD").read_text()
+          fragment = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64").read_text()
           checks = {
               "flashing disabled": 'deviceinfo_flash_method="none"' in deviceinfo,
               "DRM not falsely advertised": 'deviceinfo_drm="false"' in deviceinfo,

@@ -1,6 +1,6 @@
 # Reference: https://postmarketos.org/vendorkernel
 # Kernel config: arch/arm64/configs/a04e_defconfig
-# Toolchain selection is pinned in ../toolchains.json.
+# Toolchain digests are recorded in linux/a04e/pmaports/toolchains.json.
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191

@@ -45,8 +45,8 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git "$PMB"
           git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS"
-          mkdir -p "$PMAPORTS/device/testing"
-          cp -a "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/testing/." "$PMAPORTS/device/testing/"
+          mkdir -p "$PMAPORTS/device/downstream"
+          cp -a "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/." "$PMAPORTS/device/downstream/"
           ln -sf "$PMB/pmbootstrap.py" "$HOME/.local/bin/pmbootstrap"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           {
@@ -54,8 +54,8 @@ jobs:
             echo "A04E_PMAPORTS=$PMAPORTS"
             echo "A04E_PMWORK=$WORK"
           } >> "$GITHUB_ENV"
-          test -f "$PMAPORTS/device/testing/device-samsung-a04e/APKBUILD"
-          test -f "$PMAPORTS/device/testing/linux-samsung-a04e/APKBUILD"
+          test -f "$PMAPORTS/device/downstream/device-samsung-a04e/APKBUILD"
+          test -f "$PMAPORTS/device/downstream/linux-samsung-a04e/APKBUILD"
 
       - name: Initialize pmbootstrap for samsung-a04e
         shell: bash
@@ -85,7 +85,6 @@ jobs:
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config user pmos
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config keymap us
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config timezone UTC
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config service_manager openrc
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 status
 
       - name: Build A04e device and kernel packages
@@ -98,8 +97,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 install \
-            --no-fde --no-sshd --no-firewall --no-recommends
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 --assume-yes install \
+            --password pmos --no-fde --no-firewall --no-recommends
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 initfs build
 
       - name: Export and validate build outputs
@@ -128,6 +127,7 @@ jobs:
           Kernel: Samsung downstream Linux 4.19.191
           Interface: none (diagnostic bring-up image; DRM/KMS and touch are not ready)
           Flashing: disabled in deviceinfo; do not flash this artifact
+          Default diagnostic login: pmos / pmos; change it immediately if booted
           DTBO: the handset's original DTBO partition has not been replaced
           INFO
           sha256sum "$OUT"/* > "$OUT/SHA256SUMS.txt"
