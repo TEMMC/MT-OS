@@ -57,49 +57,50 @@ jobs:
           test -f "$PMAPORTS/device/downstream/device-samsung-a04e/APKBUILD"
           test -f "$PMAPORTS/device/downstream/linux-samsung-a04e/APKBUILD"
 
-      - name: Initialize pmbootstrap for samsung-a04e
+      - name: Configure pmbootstrap without interactive init
         shell: bash
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/pmbootstrap-init.exp" <<'EXPECT'
-          set timeout 240
-          log_user 1
-          spawn pmbootstrap --details-to-stdout --aports $env(A04E_PMAPORTS) --work $env(A04E_PMWORK) --jobs 2 init
-          expect {
-            -re {Work path.*:} { send "\r"; exp_continue }
-            -re {Device.*:} { send "samsung-a04e\r"; exp_continue }
-            -re {Kernel.*:} { send "downstream\r"; exp_continue }
-            -re {Username.*:} { send "pmos\r"; exp_continue }
-            -re {User interface.*:} { send "none\r"; exp_continue }
-            -re {Change them.*:} { send "n\r"; exp_continue }
-            -re {Extra packages.*:} { send "none\r"; exp_continue }
-            -re {Use this timezone.*:} { send "y\r"; exp_continue }
-            -re {Device hostname.*:} { send "\r"; exp_continue }
-            -re {Would you like to copy your SSH public keys.*:} { send "n\r"; exp_continue }
-            eof
-            timeout { puts stderr "pmbootstrap init timed out on an unexpected prompt"; exit 1 }
-          }
-          EXPECT
-          expect "$RUNNER_TEMP/pmbootstrap-init.exp"
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config ui none
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config user pmos
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config keymap us
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config timezone UTC
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 status
+          CONFIG="$HOME/.config/pmbootstrap/config"
+          mkdir -p "$(dirname "$CONFIG")" "$A04E_PMWORK/cache_git_v8" "$A04E_PMWORK/cache_pkgs" "$A04E_PMWORK/chroots"
+          echo "8" > "$A04E_PMWORK/version"
+          echo "8" > "$A04E_PMWORK/.version"
+          cat > "$CONFIG" <<CFG
+          [pmbootstrap]
+          version = 3
+          aports = $A04E_PMAPORTS
+          work = $A04E_PMWORK
+          work_version = 8
+          config_channels_version = 4
+          device = samsung-a04e
+          kernel = downstream
+          user = pmos
+          ui = none
+          extra_packages = none
+          keymap = us
+          locale = en_US.UTF-8
+          timezone = UTC
+          is_default_channel = True
+          jobs = 2
+          service_manager = openrc
+          CFG
+          echo "A04E_PMB_CONFIG=$CONFIG" >> "$GITHUB_ENV"
+          pmbootstrap -c "$CONFIG" work_migrate
+          pmbootstrap -c "$CONFIG" status
 
       - name: Build A04e device and kernel packages
         shell: bash
         run: |
           set -euo pipefail
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 build device-samsung-a04e
+          pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 build device-samsung-a04e
 
       - name: Build minimal postmarketOS rootfs and boot image
         shell: bash
         run: |
           set -euo pipefail
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 --assume-yes install \
+          pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 --assume-yes install \
             --password pmos --no-fde --no-firewall --no-recommends
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 initfs build
+          pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 initfs build
 
       - name: Export and validate build outputs
         shell: bash
@@ -108,7 +109,7 @@ jobs:
           OUT="$GITHUB_WORKSPACE/a04e-image-output"
           mkdir -p "$OUT"
           cd "$OUT"
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 export
+          pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 export
           cd "$GITHUB_WORKSPACE"
           find -L "$A04E_PMWORK" "$OUT" -type f \
             \( -name '*.img' -o -name 'boot.img' -o -name 'initramfs*' -o -name 'vmlinuz*' \) \
