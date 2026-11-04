@@ -22,9 +22,8 @@ build() {
 }
 
 package() {
+	# devicepkg-dev installs deviceinfo and the kernel-cmdline.conf source.
 	devicepkg_package $startdir $pkgname
-	install -Dm644 "$srcdir/kernel-cmdline.conf" \
-		"$pkgdir/usr/share/kernel-cmdline.d/00-$pkgname.conf"
 }
 
 # No partition flashing or generated boot image is enabled until a tested
@@ -32,4 +31,3 @@ package() {
 sha512sums="
 SKIP
 SKIP
-"
