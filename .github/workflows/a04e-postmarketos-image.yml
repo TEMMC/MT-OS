@@ -64,7 +64,7 @@ jobs:
           cat > "$RUNNER_TEMP/pmbootstrap-init.exp" <<'EXPECT'
           set timeout 900
           log_user 1
-          spawn pmbootstrap --aports $env(A04E_PMAPORTS) --work $env(A04E_PMWORK) --jobs 2 init --shallow-initial-clone
+          spawn pmbootstrap --aports $env(A04E_PMAPORTS) --work $env(A04E_PMWORK) --jobs 2 init
           expect {
             -re {Work path.*:} { send "\r"; exp_continue }
             -re {Device.*:} { send "samsung-a04e\r"; exp_continue }
