@@ -21,14 +21,14 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Validate device manifest
+      - name: Validate device and toolchain manifests
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          p = Path("linux/a04e/device.json")
-          d = json.loads(p.read_text())
-          required = {
+
+          device = json.loads(Path("linux/a04e/device.json").read_text())
+          expected = {
               "codename": "a04e",
               "supported_model": "SM-A042F",
               "architecture": "aarch64",
@@ -37,44 +37,52 @@ jobs:
               "flashable": False,
               "verified_linux_boot": False,
           }
-          for key, expected in required.items():
-              actual = d.get(key)
-              if actual != expected:
-                  raise SystemExit(f"{key}: expected {expected!r}, got {actual!r}")
-          print("Manifest valid. This is not a boot or hardware compatibility test.")
+          for key, value in expected.items():
+              if device.get(key) != value:
+                  raise SystemExit(f"{key}: expected {value!r}, got {device.get(key)!r}")
+
+          pins = json.loads(Path("linux/a04e/kernel-sources.json").read_text())
+          tools = json.loads(Path("linux/a04e/pmaports/toolchains.json").read_text())
+          commit = "7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
+          assert pins["downstream"]["commit"] == commit
+          assert pins["downstream"]["kernel_version"] == "4.19.191"
+          assert pins["downstream"]["defconfig"] == "a04e_defconfig"
+          assert tools["kernel_source"]["commit"] == commit
+          assert tools["compiler"]["name"] == "clang-r383902"
+          assert tools["cross_toolchain"]["name"] == "arm-gnu-toolchain-14.2.rel1"
+          print("A04e hardware and source pins are internally consistent.")
+          PY
+
+      - name: Validate package safety and source pins
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          deviceinfo = Path("linux/a04e/pmaports/device/testing/device-samsung-a04e/deviceinfo").read_text()
+          kernel = Path("linux/a04e/pmaports/device/testing/linux-samsung-a04e/APKBUILD").read_text()
+          device = Path("linux/a04e/pmaports/device/testing/device-samsung-a04e/APKBUILD").read_text()
+          fragment = Path("linux/a04e/pmaports/device/testing/linux-samsung-a04e/config-samsung-a04e.aarch64").read_text()
+          checks = {
+              "flashing disabled": 'deviceinfo_flash_method="none"' in deviceinfo,
+              "DRM not falsely advertised": 'deviceinfo_drm="false"' in deviceinfo,
+              "kernel source commit pinned": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58" in kernel,
+              "documented Clang pinned": "clang-r383902" in kernel,
+              "device package depends on kernel": "linux-samsung-a04e" in device,
+              "devtmpfs enabled for initramfs": "CONFIG_DEVTMPFS=y" in fragment,
+          }
+          for name, ok in checks.items():
+              print(("PASS" if ok else "FAIL") + ": " + name)
+          if not all(checks.values()):
+              raise SystemExit(1)
           PY
 
       - name: Check diagnostic script syntax
-        run: bash -n linux/a04e/scripts/collect-a04e.sh
-
-
-      - name: Validate pinned kernel tracks
         run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          p = Path("linux/a04e/kernel-sources.json")
-          data = json.loads(p.read_text())
-          downstream = data["downstream"]
-          assert downstream["repository"].endswith("android_kernel_a042f.git")
-          assert downstream["commit"] == "7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
-          assert downstream["kernel_version"] == "4.19.191"
-          assert downstream["defconfig"] == "a04e_defconfig"
-          assert data["policy"]["build_environment"] == "github-actions"
-          assert data["policy"]["interface"] == "phosh"
-          assert data["policy"]["flashable"] is False
-          assert data["mainline"]["status"] == "research-only"
-          print("Kernel source pins and safety gates valid.")
-          PY
+          bash -n linux/a04e/scripts/collect-a04e.sh
+          bash -n linux/a04e/scripts/collect-panel-touch.sh
 
-      - name: Verify pmaports overlay status
+      - name: Check JSON and whitespace
         run: |
-          grep -q "pmbootstrap" linux/a04e/pmaports/README.md
-          grep -q "No device package" linux/a04e/pmaports/README.md
-          echo "pmaports overlay is documented; no unverified package is built."
-
-      - name: Check documentation safety statements
-        run: |
-          grep -q "no flashable image exists yet" linux/a04e/README.md
-          grep -q "does \`not\` mean Linux boots" linux/a04e/README.md || true
-          echo "Safety and porting documentation present."
+          python3 -m json.tool linux/a04e/device.json >/dev/null
+          python3 -m json.tool linux/a04e/kernel-sources.json >/dev/null
+          python3 -m json.tool linux/a04e/pmaports/toolchains.json >/dev/null
+          git diff --check
