@@ -50,6 +50,22 @@ su -c sh ./collect-a04e.sh --include-dtb
 
 These are research inputs, not proof that a mainline kernel or a working Linux port already exists.
 
+
+### Identify the physical LCD and touchscreen
+
+After collecting the standard inventory, run the second read-only collector:
+
+```sh
+su -c sh ./collect-panel-touch.sh
+```
+
+It records panel identifiers exposed by the running vendor kernel, touchscreen
+input metadata, matching device-tree strings, and filtered display/touch kernel
+log lines. Review `panel-touch-report.txt` for private values before sharing
+it. This evidence is required because the HS04 source contains several
+incompatible 720x1600 panel candidates; selecting one by resolution alone is
+unsafe.
+
 ## CI meaning
 
 The GitHub Actions workflow checks the device manifest and shell syntax. A green CI result means the project files pass those checks; it does **not** mean Linux boots on the phone.
