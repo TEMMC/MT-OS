@@ -1,16 +1,35 @@
 # https://postmarketos.org/deviceinfo
-# Samsung Galaxy A04e SM-A042F. Conservative bring-up metadata only.
+# Samsung Galaxy A04e SM-A042F (MT6765 / HS04).
 deviceinfo_format_version="0"
 deviceinfo_name="Samsung Galaxy A04e"
 deviceinfo_manufacturer="Samsung"
-deviceinfo_codename="a04e"
+deviceinfo_codename="samsung-a04e"
 deviceinfo_year="2022"
 deviceinfo_arch="aarch64"
 deviceinfo_chassis="handset"
 deviceinfo_external_storage="true"
+deviceinfo_screen_width="720"
+deviceinfo_screen_height="1600"
 
-# The phone's boot image is Android header v2, but the exact native Linux
-# boot image/DTB hand-off and safe deployment method are not yet verified.
-# Keep flashing disabled.
+# Read-only inspected stock boot image: Android header v2, 2048-byte pages.
+# A04F TeamWin BoardConfig confirms base, ramdisk and tags addresses.
+# These values enable image generation only; they do NOT authorize flashing.
 deviceinfo_flash_method="none"
+deviceinfo_generate_bootimg="true"
+deviceinfo_header_version="2"
+deviceinfo_flash_pagesize="2048"
+deviceinfo_flash_offset_base="0x40078000"
+deviceinfo_flash_offset_kernel="0x00008000"
+deviceinfo_flash_offset_ramdisk="0x11a88000"
+deviceinfo_flash_offset_tags="0x07808000"
+deviceinfo_flash_offset_dtb="0x07808000"
+
+# The vendor board DTS produces the MT6765 base DTB. Keep it as the
+# dedicated Android boot-image DTB component, not appended to Image.gz.
+deviceinfo_dtb="mediatek/mt6765"
+deviceinfo_append_dtb="false"
+deviceinfo_bootimg_qcdt="false"
+deviceinfo_bootimg_dtb_second="false"
+
+# No usable DRM/KMS driver has been established yet.
 deviceinfo_drm="false"
