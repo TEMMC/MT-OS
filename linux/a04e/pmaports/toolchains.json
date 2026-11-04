@@ -3,16 +3,21 @@
     "repository": "https://github.com/ravindu644/android_kernel_a042f",
     "commit": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58",
     "kernel_version": "4.19.191",
-    "defconfig": "a04e_defconfig"
+    "defconfig": "a04e_defconfig",
+    "archive_sha512": "f58007340bd0ced8e92f221057af681c321eaa5baa9ec2b76935b0cede15d6ac952790a1792fa98043a27e13f86789eeb029667601983627860e7859ce1fc437"
   },
   "compiler": {
     "name": "clang-r383902",
-    "url": "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902.tar.gz"
+    "url": "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902.tar.gz",
+    "sha256": "480d46a817a8d50c3657cec3056cb0532099966500279c2a3194297b54cf28cd",
+    "sha512": "13105db093df4c44cea0f8f3094b740ee4254c6a1af031cbc12eb2440d77e834d26c07faaec090760b0a89c6c4db891e732791f4caaffce551f5d977150a2001"
   },
   "cross_toolchain": {
     "name": "arm-gnu-toolchain-14.2.rel1",
     "target": "aarch64-none-linux-gnu",
-    "url": "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
+    "url": "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz",
+    "sha256": "47aeefc02b0ee39f6d4d1812110952975542d365872a7474b5306924bca4faa1",
+    "sha512": "e51a1c4e813132dc07feb4b808d2723d09b0a3b558a3715e2293b3b5d78032a41c780a1f412cd1427513e4924c84f08c6b2b29843318ecb50cf1fc044232714a"
   },
   "environment": {
     "ANDROID_MAJOR_VERSION": "r",
@@ -21,7 +26,13 @@
     "output": "arch/arm64/boot/Image.gz"
   },
   "integrity": {
-    "status": "pending",
-    "reason": "The upstream toolchain release page does not publish checksums; CI must record and review archive SHA-256 values before these binaries are accepted for a release."
+    "status": "measured-in-successful-ci-build",
+    "source": "SHA-256/SHA-512 computed from the exact archives used by successful GitHub Actions kernel build run 41811886477; archive hashes are enforced by the kernel APKBUILD sha512sums.",
+    "limitation": "Observed archive digests, not upstream publisher signatures. Verify against an independent trusted mirror before production release."
+  },
+  "kernel_su_next": {
+    "repository": "https://github.com/rifsxd/KernelSU-Next",
+    "commit": "56c55b692a00d90c0568a57ef5a8ed0daa23bb9a",
+    "archive_sha512": "a434f3d957df3f3471548e89a00a4b6f3db022ac309e21edd6b3fce23444f1594524969234b69af06c4fd77afe094ab57bc8d8962d8e3ec5dd665f9e17f68c1c"
   }
 }
