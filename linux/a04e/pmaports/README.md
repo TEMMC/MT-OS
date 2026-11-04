@@ -17,36 +17,46 @@ postmarketOS `pmaports`. It follows the upstream split between:
 ## Kernel tracks
 
 The downstream candidate is pinned in `../kernel-sources.json` to the
-archived A042F Samsung kernel repository and its `a04e` branch commit.
-Its reported kernel base is 4.19.191. The source tree contains both
-`a04e_defconfig` and `a04e_00_defconfig`; the larger `a04e_defconfig` is the
-initial candidate. The uploaded live-device report confirms the kernel release
-but does not include `/proc/config.gz`, so the source defconfig has not yet
-been compared with the running configuration. This remains a research input,
-not a verified postmarketOS kernel package.
+archived Samsung A04e kernel repository and commit
+`7c1b304f2df8df4c85abe6fe84b8238d7521bd58`. Its reported kernel base is
+4.19.191. The running `/proc/config.gz` has been compared byte-for-byte with
+`arch/arm64/configs/a04e_defconfig`; the source defconfig is verified.
 
-The mainline track is kept separate. It must not inherit vendor-kernel
-boot assumptions, patches, or configuration. A mainline port needs a
-working MT6765 device tree, clocks, regulators, pinctrl, storage, display,
-touch and bootloader hand-off support.
+The mainline track remains separate. It must not inherit vendor-kernel boot
+assumptions, patches or configuration. The inspected current upstream
+MediaTek DRM match table does not include MT6765 MMSYS support, so a usable
+mainline display path cannot be assumed. Mainline work needs explicit
+validation of the MT6765 display controller, clocks, DSI host, panel, pinctrl,
+regulators, storage and bootloader hand-off.
 
-## Why the APKBUILD/deviceinfo are not fabricated yet
+## Hardware findings
 
-The uploaded handset report now establishes by-name mappings for boot
-(`mmcblk0p37`), recovery (`mmcblk0p38`), DTBO (`mmcblk0p12`), vbmeta
-(`mmcblk0p13`), super (`mmcblk0p44`) and userdata (`mmcblk0p50`). It does not
-provide partition sizes, boot-image headers, DTB/DTBO contents, panel/touch
-bindings, or a verified safe recovery procedure. Those details control the
-device package and boot-deploy behavior.
-Inventing them could create an image that looks complete but cannot boot, or
-could direct a future flashing step at the wrong partition.
+The actual boot image and DTBO have now been parsed read-only. The boot image
+uses Android boot header v2. The DTBO contains one valid FDT overlay whose
+compatible strings identify Samsung A04e / MT6765.
 
-The diagnostic findings are recorded in `../DIAGNOSTIC-FINDINGS.md`. The next
-valid step is to compare the running `/proc/config.gz` with the source defconfig
-and inspect boot/recovery image metadata read-only. Then add the device package
-and downstream kernel package with verified values.
-Only after that should CI run `pmbootstrap build`, `pmbootstrap install`,
-and `pmbootstrap export`.
+The device-specific DTS includes the Samsung HS04 board DTS. The downstream
+defconfig enables the MediaTek vendor framebuffer and LCM stack, and lists
+seven candidate 720x1600 panel drivers. The actual physical panel variant is
+not yet known. The HS04 touchscreen DTSI describes Chipone, Jadard and
+GalaxyCore SPI candidates; the exact populated controller still needs
+confirmation.
+
+See `../DISPLAY-TOUCH-PORTING-ANALYSIS.md` and
+`../DIAGNOSTIC-FINDINGS.md` for the detailed source and device findings.
+
+## Why the package recipes are not fabricated yet
+
+The device and kernel packages must use the verified board identity, correct
+kernel build process, actual display/touch variants, and a tested boot
+strategy. The downstream kernel is archived and uses a vendor-specific
+MediaTek display stack; it cannot be treated as a ready-made upstream DRM
+kernel. A kernel package may be drafted, but a successful build and diagnostic
+boot must be verified separately.
+
+The next engineering gate is to establish the legacy kernel's reproducible
+build toolchain and compile it in CI, while continuing the panel and touch
+variant investigation. Do not invent a flash deployment recipe.
 
 ## Current status
 
