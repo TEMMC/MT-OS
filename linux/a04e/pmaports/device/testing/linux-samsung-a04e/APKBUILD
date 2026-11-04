@@ -4,7 +4,7 @@
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191
-pkgrel=0
+pkgrel=1
 pkgdesc="Samsung Galaxy A04e downstream kernel (bring-up only)"
 arch="aarch64"
 _carch="arm64"
@@ -70,23 +70,35 @@ build() {
 	make O="$_outdir" ARCH="$_carch" CC="$clang" \
 		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
 		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y olddefconfig
+
+	# Build kernel and both A04e board-tree outputs.
 	make O="$_outdir" ARCH="$_carch" CC="$clang" \
 		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
 		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y \
 		KBUILD_BUILD_VERSION="$((pkgrel + 1))-postmarketOS" -j"${JOBS:-2}"
+	make O="$_outdir" ARCH="$_carch" CC="$clang" \
+		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
+		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y dtbs
+
+	[ -s "$_outdir/arch/arm64/boot/Image.gz" ] || die "Kernel Image.gz missing"
+	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765.dtb" ] || die "MT6765 base DTB missing"
+	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb" ] || die "A04e DT overlay missing"
 }
 
 package() {
 	downstreamkernel_package "$builddir" "$pkgdir" "$_carch" \
 		"$_flavor" "$_outdir"
+
+	local dtb_dir="$_outdir/arch/arm64/boot/dts/mediatek"
+	install -Dm644 "$builddir/$dtb_dir/mt6765.dtb" \
+		"$pkgdir/boot/dtbs/mediatek/mt6765.dtb"
+	install -Dm644 "$builddir/$dtb_dir/mt6765_a04e_eur_open_00.dtb" \
+		"$pkgdir/boot/dtbs/mediatek/mt6765_a04e_eur_open_00.dtbo"
 }
 
-# KernelSU-Next is pinned to the exact gitlink commit in the kernel source.
-# Toolchain archives still need independently reviewed fixed checksums.
 sha512sums="
 SKIP
 SKIP
 SKIP
 SKIP
 8da43f007813bb0b61f1cd0b01764e7df96854b23ae8fbfc4888d8a015cc8feb75d8309e6457ae2efa055a66d9b4100849eb03c0cbe7530cc5ccb26dbdc46ccc
-"
