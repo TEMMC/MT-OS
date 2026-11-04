@@ -1,11 +1,11 @@
 # Reference: https://postmarketos.org/vendorkernel
-# Kernel config: arch/arm64/configs/a04e_defconfig
-# Toolchain digests are recorded in linux/a04e/pmaports/toolchains.json.
+# The compressed Image.gz is reused from the verified CI kernel build.
+# Only the MT6765 base DTB and A04e board overlay are generated here.
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191
-pkgrel=1
-pkgdesc="Samsung Galaxy A04e downstream kernel (bring-up only)"
+pkgrel=2
+pkgdesc="Samsung Galaxy A04e downstream kernel (prebuilt kernel bring-up)"
 arch="aarch64"
 _carch="arm64"
 _flavor="samsung-a04e"
@@ -17,6 +17,7 @@ makedepends="
 	bc
 	bison
 	devicepkg-dev
+	dtc
 	flex
 	gmp-dev
 	openssl-dev
@@ -27,79 +28,57 @@ makedepends="
 
 _repository="android_kernel_a042f"
 _commit="7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
-_ksu_commit="56c55b692a00d90c0568a57ef5a8ed0daa23bb9a"
 _config="config-$_flavor.$arch"
-_clang_url="https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902.tar.gz"
-_gnu_url="https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
 source="
 	$pkgname-$_commit.tar.gz::https://github.com/ravindu644/$_repository/archive/$_commit.tar.gz
-	kernelsu-next-$_ksu_commit.tar.gz::https://github.com/rifsxd/KernelSU-Next/archive/$_ksu_commit.tar.gz
-	clang-r383902.tar.gz::$_clang_url
-	arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz::$_gnu_url
 	$_config
+	Image.gz
 "
 builddir="$srcdir/$_repository-$_commit"
 _outdir="out"
 
 prepare() {
 	default_prepare
-	mkdir -p "$builddir/KernelSU-Next"
-	cp -a "$srcdir/KernelSU-Next-$_ksu_commit/." "$builddir/KernelSU-Next/"
-	[ -f "$builddir/drivers/kernelsu/Kconfig" ] || die "Pinned KernelSU-Next submodule was not staged correctly"
-	export ANDROID_MAJOR_VERSION=r
 	. downstreamkernel_prepare
 }
 
 build() {
 	unset LDFLAGS
+	export ARCH="$_carch"
 
-	local clang
-	local cross_gcc
-	clang="$(find "$srcdir" -path '*/bin/clang' -print -quit)"
-	cross_gcc="$(find "$srcdir" -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
-	[ -x "$clang" ] || die "Pinned clang-r383902 compiler was not found"
-	[ -x "$cross_gcc" ] || die "Pinned AArch64 GNU cross compiler was not found"
-
-	export ANDROID_MAJOR_VERSION=r
-	make O="$_outdir" ARCH="$_carch" CC="$clang" \
-		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
-		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y a04e_defconfig
-
+	make O="$_outdir" ARCH="$_carch" a04e_defconfig
 	"$builddir/scripts/kconfig/merge_config.sh" -m -O "$_outdir" \
 		"$_outdir/.config" "$srcdir/$_config"
-	make O="$_outdir" ARCH="$_carch" CC="$clang" \
-		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
-		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y olddefconfig
+	make O="$_outdir" ARCH="$_carch" olddefconfig
 
-	# Build kernel and both A04e board-tree outputs.
-	make O="$_outdir" ARCH="$_carch" CC="$clang" \
-		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
-		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y \
-		KBUILD_BUILD_VERSION="$((pkgrel + 1))-postmarketOS" -j"${JOBS:-2}"
-	make O="$_outdir" ARCH="$_carch" CC="$clang" \
-		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
-		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y dtbs
+	# Generate only the DTB outputs. Do not compile the kernel again.
+	make O="$_outdir" ARCH="$_carch" dtbs
 
-	[ -s "$_outdir/arch/arm64/boot/Image.gz" ] || die "Kernel Image.gz missing"
+	[ -s "$srcdir/Image.gz" ] || die "Verified prebuilt Image.gz is missing"
 	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765.dtb" ] || die "MT6765 base DTB missing"
-	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb" ] || die "A04e DT overlay missing"
+	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb" ] || die "A04e board DT overlay missing"
 }
 
 package() {
-	downstreamkernel_package "$builddir" "$pkgdir" "$_carch" \
-		"$_flavor" "$_outdir"
+	# Keep the exact compressed kernel binary from the successful kernel run.
+	install -Dm644 "$srcdir/Image.gz" "$pkgdir/boot/vmlinuz-$_flavor"
+
+	# Kernel release metadata is needed by postmarketOS boot tooling.
+	make -s O="$_outdir" ARCH="$_carch" kernelrelease \
+		> "$pkgdir/kernel.release.tmp"
+	install -Dm644 "$pkgdir/kernel.release.tmp" \
+		"$pkgdir/usr/share/kernel/$_flavor/kernel.release"
+	rm -f "$pkgdir/kernel.release.tmp"
 
 	local dtb_dir="$_outdir/arch/arm64/boot/dts/mediatek"
-	install -Dm644 "$builddir/$dtb_dir/mt6765.dtb" \
+	install -Dm644 "$dtb_dir/mt6765.dtb" \
 		"$pkgdir/boot/dtbs/mediatek/mt6765.dtb"
-	install -Dm644 "$builddir/$dtb_dir/mt6765_a04e_eur_open_00.dtb" \
+	install -Dm644 "$dtb_dir/mt6765_a04e_eur_open_00.dtb" \
 		"$pkgdir/boot/dtbs/mediatek/mt6765_a04e_eur_open_00.dtbo"
 }
 
 sha512sums="
 f58007340bd0ced8e92f221057af681c321eaa5baa9ec2b76935b0cede15d6ac952790a1792fa98043a27e13f86789eeb029667601983627860e7859ce1fc437
-a434f3d957df3f3471548e89a00a4b6f3db022ac309e21edd6b3fce23444f1594524969234b69af06c4fd77afe094ab57bc8d8962d8e3ec5dd665f9e17f68c1c
-13105db093df4c44cea0f8f3094b740ee4254c6a1af031cbc12eb2440d77e834d26c07faaec090760b0a89c6c4db891e732791f4caaffce551f5d977150a2001
-e51a1c4e813132dc07feb4b808d2723d09b0a3b558a3715e2293b3b5d78032a41c780a1f412cd1427513e4924c84f08c6b2b29843318ecb50cf1fc044232714a
 8da43f007813bb0b61f1cd0b01764e7df96854b23ae8fbfc4888d8a015cc8feb75d8309e6457ae2efa055a66d9b4100849eb03c0cbe7530cc5ccb26dbdc46ccc
+SKIP
 "

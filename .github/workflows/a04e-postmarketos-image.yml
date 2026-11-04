@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-a04e-postmarketos:
@@ -35,6 +36,26 @@ jobs:
             build-essential ca-certificates curl e2fsprogs jq rsync \
             xz-utils zip unzip
 
+      # Reuse the already successful kernel build. This artifact contains
+      # Image.gz, kernel.config and checksums; DTBs are built separately below.
+      - name: Download previously built A04e kernel
+        uses: actions/download-artifact@v4
+        with:
+          name: a04e-kernel-build-diagnostics
+          run-id: 41817119710
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/a04e-prebuilt-kernel
+
+      - name: Verify and stage the prebuilt kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          KERNEL="$RUNNER_TEMP/a04e-prebuilt-kernel/Image.gz"
+          test -s "$KERNEL"
+          echo "56b79a1f33c9d1e60a48847dad995fe4a7ee0164b9af473b7a898034b1165753  $KERNEL" | sha256sum --check -
+          install -Dm644 "$KERNEL" \
+            "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/linux-samsung-a04e/Image.gz"
+
       - name: Prepare pmbootstrap and pmaports overlay
         shell: bash
         run: |
@@ -56,6 +77,7 @@ jobs:
           } >> "$GITHUB_ENV"
           test -f "$PMAPORTS/device/downstream/device-samsung-a04e/APKBUILD"
           test -f "$PMAPORTS/device/downstream/linux-samsung-a04e/APKBUILD"
+          test -s "$PMAPORTS/device/downstream/linux-samsung-a04e/Image.gz"
 
       - name: Configure pmbootstrap without interactive init
         shell: bash
@@ -88,7 +110,7 @@ jobs:
           pmbootstrap -c "$CONFIG" work_migrate
           pmbootstrap -c "$CONFIG" status
 
-      - name: Build A04e device and kernel packages
+      - name: Build A04e device packages with the prebuilt kernel
         shell: bash
         run: |
           set -euo pipefail
@@ -125,7 +147,8 @@ jobs:
           Target: Samsung Galaxy A04e SM-A042F
           Distribution: postmarketOS edge
           Device package: device-samsung-a04e
-          Kernel: Samsung downstream Linux 4.19.191
+          Kernel: reused Linux 4.19.191 Image.gz from workflow run 41817119710
+          DTBs: rebuilt from the pinned A04e kernel source; not a full kernel rebuild
           Interface: none (diagnostic bring-up image; DRM/KMS and touch are not ready)
           Flashing: disabled in deviceinfo; do not flash this artifact
           Default diagnostic login: pmos / pmos; change it immediately if booted
@@ -140,6 +163,15 @@ jobs:
           done
           sha256sum "$OUT"/* > "$OUT/SHA256SUMS.txt"
           ls -lah "$OUT"
+
+      - name: Print pmbootstrap log if the build fails
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          if [ -f "$A04E_PMWORK/log.txt" ]; then
+            tail -n 300 "$A04E_PMWORK/log.txt"
+          fi
 
       - name: Upload A04e postmarketOS bring-up image
         uses: actions/upload-artifact@v4

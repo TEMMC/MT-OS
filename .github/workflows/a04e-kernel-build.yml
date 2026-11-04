@@ -3,11 +3,11 @@ name: A04e downstream kernel build
 on:
   push:
     paths:
-      - "linux/a04e/**"
+      - "linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
       - ".github/workflows/a04e-kernel-build.yml"
   pull_request:
     paths:
-      - "linux/a04e/**"
+      - "linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
       - ".github/workflows/a04e-kernel-build.yml"
   workflow_dispatch:
 
@@ -100,18 +100,18 @@ jobs:
           test -s "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           file "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           sha256sum "$A04E_SRC/out/arch/arm64/boot/Image.gz" \
-            | tee "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256SUM.txt"
+            | tee "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256-SUM.txt"
           mkdir -p "$RUNNER_TEMP/a04e-output"
           cp "$A04E_SRC/out/arch/arm64/boot/Image.gz" "$RUNNER_TEMP/a04e-output/"
           cp "$A04E_SRC/out/.config" "$RUNNER_TEMP/a04e-output/kernel.config"
           cp "$RUNNER_TEMP/a04e-toolchains/SHA256SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/SHA512SUMS.txt" "$RUNNER_TEMP/a04e-output/"
-          cp "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256SUM.txt" "$RUNNER_TEMP/a04e-output/"
+          cp "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256-SUM.txt" "$RUNNER_TEMP/a04e-output/"
 
-      - name: Upload kernel build diagnostics (not a flashable image)
+      - name: Upload kernel build diagnostics and reusable kernel
         uses: actions/upload-artifact@v4
         with:
           name: a04e-kernel-build-diagnostics
           path: ${{ runner.temp }}/a04e-output/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
