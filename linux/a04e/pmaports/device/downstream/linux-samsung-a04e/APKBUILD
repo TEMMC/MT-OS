@@ -43,11 +43,40 @@ _outdir="out"
 prepare() {
 	default_prepare
 
-	# The vendor archive contains CRLF and patch-style leading '+' markers in
-	# several Kconfig files. Kconfig's parser rejects those bytes during
-	# downstreamkernel_prepare's immediate oldconfig run. Normalize only Kconfig
-	# metadata in this temporary build tree; leave driver sources untouched.
-	find "$builddir" -type f -name Kconfig -exec sed -i -e 's/\r$//' -e 's/^+//' {} +
+	# The vendor archive has CRLF endings and patch-style '+' prefixes in
+	# several Kconfig files. Normalize their bytes before any Kconfig parser runs.
+	# Use Python byte processing so this is independent of sed/BusyBox semantics.
+	python3 - "$builddir" <<'PY'
+import os
+import sys
+root = sys.argv[1]
+changed = []
+for base, dirs, files in os.walk(root):
+    for name in files:
+        if name != "Kconfig":
+            continue
+        path = os.path.join(base, name)
+        with open(path, "rb") as stream:
+            data = stream.read()
+        normalized = data.replace(b"\\r\\n", b"\\n").replace(b"\\r", b"\\n")
+        normalized = b"\\n".join(line[1:] if line.startswith(b"+") else line
+                                  for line in normalized.split(b"\\n"))
+        if normalized != data:
+            with open(path, "wb") as stream:
+                stream.write(normalized)
+            changed.append(os.path.relpath(path, root))
+print("Normalized Kconfig files:", len(changed))
+for path in changed:
+    print("  ", path)
+# Fail early if patch markers or CR bytes remain in any Kconfig file.
+for base, dirs, files in os.walk(root):
+    for name in files:
+        if name == "Kconfig":
+            path = os.path.join(base, name)
+            data = open(path, "rb").read()
+            if b"\\r" in data or any(line.startswith(b"+") for line in data.split(b"\\n")):
+                raise SystemExit("Kconfig normalization failed: " + path)
+PY
 
 
 	# downstreamkernel_prepare runs oldconfig immediately. The source archive
