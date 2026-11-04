@@ -109,7 +109,7 @@ jobs:
           OUT="$GITHUB_WORKSPACE/a04e-image-output"
           mkdir -p "$OUT"
           cd "$OUT"
-          pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 export
+          pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 export "$OUT"
           cd "$GITHUB_WORKSPACE"
           find -L "$A04E_PMWORK" "$OUT" -type f \
             \( -name '*.img' -o -name 'boot.img' -o -name 'initramfs*' -o -name 'vmlinuz*' \) \
@@ -131,6 +131,13 @@ jobs:
           Default diagnostic login: pmos / pmos; change it immediately if booted
           DTBO: the handset's original DTBO partition has not been replaced
           INFO
+          for boot in "$OUT"/boot*.img; do
+            [ -f "$boot" ] || continue
+            boot_size="$(stat -c %s "$boot")"
+            if [ "$boot_size" -gt 33554432 ]; then
+              echo "WARNING: $(basename "$boot") is ${boot_size} bytes; handset boot partition is only 33554432 bytes." >> "$OUT/BUILD-INFO.txt"
+            fi
+          done
           sha256sum "$OUT"/* > "$OUT/SHA256SUMS.txt"
           ls -lah "$OUT"
 
