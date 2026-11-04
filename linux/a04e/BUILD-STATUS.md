@@ -41,6 +41,7 @@ checksums; the new CI records SHA-256 values for review.
   12,061,530-byte gzip kernel payload and 1,412,010-byte gzip ramdisk.
 - The actual DTBO was parsed: one 64,951-byte FDT overlay entry with matching
   A04e and MT6765 compatible strings.
+- The pinned kernel source contains a required KernelSU-Next git submodule at commit `56c55b692a00d90c0568a57ef5a8ed0daa23bb9a`; GitHub source archives omit submodule contents, so the CI/package recipes now fetch and stage this exact gitlink separately.
 - The downstream defconfig enables the vendor MTK framebuffer/LCM stack, but
   disables `CONFIG_DRM_MEDIATEK`, `CONFIG_MTK_LCM_DEVICE_TREE_SUPPORT` and
   `CONFIG_DEVTMPFS`.
@@ -62,8 +63,8 @@ Detailed source analysis: `DISPLAY-TOUCH-PORTING-ANALYSIS.md`.
 - Added `device-samsung-a04e/APKBUILD`, conservative deviceinfo and a
   minimal Linux kernel command line.
 - Kept `deviceinfo_flash_method="none"` and `deviceinfo_drm="false"`.
-- Added a GitHub Actions kernel compile workflow. It is a compile test, not a
-  native boot test.
+- Added a GitHub Actions kernel compile workflow. The first attempt failed during Kconfig because the source archive omitted the KernelSU-Next submodule required through `drivers/kernelsu`.
+- Fixed the workflow and APKBUILD to fetch and stage the exact KernelSU-Next gitlink commit. A new kernel build run is in progress; it is still only a compile test, not a native boot test.
 - Added `scripts/collect-panel-touch.sh` to collect runtime panel, input,
   device-tree and kernel-log evidence without writing partitions.
 
@@ -92,7 +93,7 @@ Detailed source analysis: `DISPLAY-TOUCH-PORTING-ANALYSIS.md`.
 - Kernel and device APKBUILD scaffolding: committed; pmbootstrap build not yet
   verified.
 - Reproducible toolchain versions: pinned; archive checksums pending review.
-- Downstream kernel compilation: pending GitHub Actions result.
+- Downstream kernel compilation: first attempt failed at `a04e_defconfig` because `drivers/kernelsu/Kconfig` was a dangling submodule symlink; fixed by pinning and staging KernelSU-Next commit `56c55b6...`; repaired build currently running.
 - Exact active panel: unresolved.
 - Exact touchscreen controller: not fully resolved.
 - Diagnostic initramfs/native boot: not yet produced/tested.
