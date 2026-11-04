@@ -1,0 +1,16 @@
+# https://postmarketos.org/deviceinfo
+# Samsung Galaxy A04e SM-A042F. Conservative bring-up metadata only.
+deviceinfo_format_version="0"
+deviceinfo_name="Samsung Galaxy A04e"
+deviceinfo_manufacturer="Samsung"
+deviceinfo_codename="a04e"
+deviceinfo_year="2022"
+deviceinfo_arch="aarch64"
+deviceinfo_chassis="handset"
+deviceinfo_external_storage="true"
+
+# The phone's boot image is Android header v2, but the exact native Linux
+# boot image/DTB hand-off and safe deployment method are not yet verified.
+# Keep flashing disabled.
+deviceinfo_flash_method="none"
+deviceinfo_drm="false"
