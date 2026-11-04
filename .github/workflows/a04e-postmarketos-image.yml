@@ -66,16 +66,16 @@ jobs:
           log_user 1
           spawn pmbootstrap --aports $env(A04E_PMAPORTS) --work $env(A04E_PMWORK) --jobs 2 init --shallow-initial-clone
           expect {
-            -re {Work path.*:} { send "\\r"; exp_continue }
-            -re {Device.*:} { send "samsung-a04e\\r"; exp_continue }
-            -re {Kernel.*:} { send "downstream\\r"; exp_continue }
-            -re {Username.*:} { send "pmos\\r"; exp_continue }
-            -re {User interface.*:} { send "none\\r"; exp_continue }
-            -re {Change them.*:} { send "n\\r"; exp_continue }
-            -re {Extra packages.*:} { send "none\\r"; exp_continue }
-            -re {Use this timezone.*:} { send "y\\r"; exp_continue }
-            -re {Device hostname.*:} { send "\\r"; exp_continue }
-            -re {Would you like to copy your SSH public keys.*:} { send "n\\r"; exp_continue }
+            -re {Work path.*:} { send "\r"; exp_continue }
+            -re {Device.*:} { send "samsung-a04e\r"; exp_continue }
+            -re {Kernel.*:} { send "downstream\r"; exp_continue }
+            -re {Username.*:} { send "pmos\r"; exp_continue }
+            -re {User interface.*:} { send "none\r"; exp_continue }
+            -re {Change them.*:} { send "n\r"; exp_continue }
+            -re {Extra packages.*:} { send "none\r"; exp_continue }
+            -re {Use this timezone.*:} { send "y\r"; exp_continue }
+            -re {Device hostname.*:} { send "\r"; exp_continue }
+            -re {Would you like to copy your SSH public keys.*:} { send "n\r"; exp_continue }
             eof
             timeout { puts stderr "pmbootstrap init timed out on an unexpected prompt"; exit 1 }
           }
