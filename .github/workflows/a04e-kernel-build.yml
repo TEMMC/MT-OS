@@ -81,7 +81,7 @@ jobs:
             CONFIG_SECTION_MISMATCH_WARN_ONLY=y a04e_defconfig
           "$A04E_SRC/scripts/kconfig/merge_config.sh" -m -O "$A04E_SRC/out" \
             "$A04E_SRC/out/.config" \
-            "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/testing/linux-samsung-a04e/config-samsung-a04e.aarch64"
+            "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
           make -C "$A04E_SRC" O=out ARCH=arm64 CC="$A04E_CLANG" \
             CROSS_COMPILE="$A04E_CROSS_COMPILE" \
             CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
