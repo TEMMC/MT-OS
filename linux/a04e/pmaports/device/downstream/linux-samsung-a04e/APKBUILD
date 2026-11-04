@@ -40,6 +40,13 @@ _outdir="out"
 prepare() {
 	default_prepare
 
+	# The vendor archive contains CRLF and patch-style leading '+' markers in
+	# several Kconfig files. Kconfig's parser rejects those bytes during
+	# downstreamkernel_prepare's immediate oldconfig run. Normalize only Kconfig
+	# metadata in this temporary build tree; leave driver sources untouched.
+	find "$builddir" -type f -name Kconfig -exec sed -i -e 's/\r$//' -e 's/^+//' {} +
+
+
 	# downstreamkernel_prepare runs oldconfig immediately. The source archive
 	# omits KernelSU-Next, so remove its dangling Kconfig reference first.
 	awk 'index($0, "drivers/kernelsu/Kconfig") == 0' "$builddir/drivers/Kconfig" > "$builddir/drivers/Kconfig.tmp"
