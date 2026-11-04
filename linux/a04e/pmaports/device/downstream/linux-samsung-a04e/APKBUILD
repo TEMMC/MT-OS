@@ -40,12 +40,16 @@ _outdir="out"
 prepare() {
 	default_prepare
 
-	# downstreamkernel_prepare runs Kconfig's oldconfig during preparation.
-	# The source archive omits the KernelSU-Next submodule, but drivers/Kconfig
-	# still references its missing Kconfig file. Remove that reference BEFORE
-	# calling the helper, otherwise its oldconfig fails before the workaround.
-	if grep -Eq '^[[:space:]]*source[[:space:]]+"drivers/kernelsu/Kconfig"[[:space:]]*
+	# downstreamkernel_prepare runs oldconfig immediately. The source archive
+	# omits KernelSU-Next, so remove its dangling Kconfig reference first.
+	awk 'index($0, "drivers/kernelsu/Kconfig") == 0' "$builddir/drivers/Kconfig" > "$builddir/drivers/Kconfig.tmp"
+	mv "$builddir/drivers/Kconfig.tmp" "$builddir/drivers/Kconfig"
+	if grep -Fq 'drivers/kernelsu/Kconfig' "$builddir/drivers/Kconfig"; then
+		die "KernelSU Kconfig reference remains in the source archive"
+	fi
 
+	. downstreamkernel_prepare
+}
 build() {
 	unset LDFLAGS
 	export ARCH="$_carch"
