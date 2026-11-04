@@ -33,10 +33,14 @@ jobs:
         run: |
           set -euo pipefail
           COMMIT="7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
+          KSU_COMMIT="56c55b692a00d90c0568a57ef5a8ed0daa23bb9a"
           mkdir -p "$RUNNER_TEMP/a04e-src" "$RUNNER_TEMP/a04e-toolchains"
           curl --fail --location --retry 5 --retry-all-errors \
             "https://github.com/ravindu644/android_kernel_a042f/archive/$COMMIT.tar.gz" \
             -o "$RUNNER_TEMP/a04e-src/kernel.tar.gz"
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://github.com/rifsxd/KernelSU-Next/archive/$KSU_COMMIT.tar.gz" \
+            -o "$RUNNER_TEMP/a04e-src/kernelsu-next.tar.gz"
           curl --fail --location --retry 5 --retry-all-errors \
             "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902.tar.gz" \
             -o "$RUNNER_TEMP/a04e-toolchains/clang-r383902.tar.gz"
@@ -46,12 +50,15 @@ jobs:
           (
             cd "$RUNNER_TEMP/a04e-toolchains"
             sha256sum *.tar.* | tee SHA256SUMS.txt
-            sha512sum *.tar.* "$RUNNER_TEMP/a04e-src/kernel.tar.gz" | tee SHA512SUMS.txt
+            sha512sum *.tar.* "$RUNNER_TEMP/a04e-src/kernel.tar.gz" "$RUNNER_TEMP/a04e-src/kernelsu-next.tar.gz" | tee SHA512SUMS.txt
           )
           tar -xf "$RUNNER_TEMP/a04e-src/kernel.tar.gz" -C "$RUNNER_TEMP/a04e-src"
+          SRC="$RUNNER_TEMP/a04e-src/android_kernel_a042f-$COMMIT"
+          mkdir -p "$SRC/KernelSU-Next"
+          tar -xzf "$RUNNER_TEMP/a04e-src/kernelsu-next.tar.gz" --strip-components=1 -C "$SRC/KernelSU-Next"
+          test -f "$SRC/drivers/kernelsu/Kconfig"
           tar -xf "$RUNNER_TEMP/a04e-toolchains/clang-r383902.tar.gz" -C "$RUNNER_TEMP/a04e-toolchains"
           tar -xf "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" -C "$RUNNER_TEMP/a04e-toolchains"
-          SRC="$RUNNER_TEMP/a04e-src/android_kernel_a042f-$COMMIT"
           test -f "$SRC/Makefile"
           CLANG="$(find "$RUNNER_TEMP/a04e-toolchains" -path '*/bin/clang' -print -quit)"
           CROSS_GCC="$(find "$RUNNER_TEMP/a04e-toolchains" -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
