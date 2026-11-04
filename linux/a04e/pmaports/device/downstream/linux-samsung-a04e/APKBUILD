@@ -90,12 +90,13 @@ PY
 	# This vendor Makefile hard-codes an in-tree Android Clang path that is
 	# absent from the source archive. Use postmarketOS' installed LLVM tools
 	# consistently for Kconfig preparation, DTB generation and kernel metadata.
-	export LLVM=1
+	export LLVM=1 LLVM_IAS=1
 	. downstreamkernel_prepare
 }
 build() {
 	unset LDFLAGS
 	export ARCH="$_carch"
+	export LLVM=1 LLVM_IAS=1
 
 	make O="$_outdir" ARCH="$_carch" a04e_defconfig
 	"$builddir/scripts/kconfig/merge_config.sh" -m -O "$_outdir" \
