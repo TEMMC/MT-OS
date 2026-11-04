@@ -4,7 +4,7 @@
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191
-pkgrel=2
+pkgrel=3
 pkgdesc="Samsung Galaxy A04e downstream kernel (prebuilt kernel bring-up)"
 arch="aarch64"
 _carch="arm64"
@@ -14,6 +14,9 @@ license="GPL-2.0-only"
 options="!strip !check !tracedeps pmb:cross-native"
 makedepends="
 	bash
+	clang
+	lld
+	llvm
 	bc
 	bison
 	devicepkg-dev
@@ -55,6 +58,10 @@ prepare() {
 		die "KernelSU Kconfig reference remains in the source archive"
 	fi
 
+	# This vendor Makefile hard-codes an in-tree Android Clang path that is
+	# absent from the source archive. Use postmarketOS' installed LLVM tools
+	# consistently for Kconfig preparation, DTB generation and kernel metadata.
+	export LLVM=1
 	. downstreamkernel_prepare
 }
 build() {
