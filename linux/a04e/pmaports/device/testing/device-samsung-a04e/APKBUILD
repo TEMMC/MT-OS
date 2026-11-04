@@ -1,0 +1,35 @@
+# Reference: https://postmarketos.org/devicepkg
+pkgname=device-samsung-a04e
+pkgdesc="Samsung Galaxy A04e (SM-A042F) bring-up device package"
+pkgver=0.1
+pkgrel=0
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	linux-samsung-a04e
+	postmarketos-base
+"
+makedepends="devicepkg-dev"
+source="
+	deviceinfo
+	kernel-cmdline.conf
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+	install -Dm644 "$srcdir/kernel-cmdline.conf" \
+		"$pkgdir/usr/share/kernel-cmdline.d/00-$pkgname.conf"
+}
+
+# No partition flashing or generated boot image is enabled until a tested
+# Samsung boot/recovery procedure exists.
+sha512sums="
+SKIP
+SKIP
+"
