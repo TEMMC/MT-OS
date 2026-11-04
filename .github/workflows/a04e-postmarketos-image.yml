@@ -57,20 +57,35 @@ jobs:
           test -f "$PMAPORTS/device/testing/device-samsung-a04e/APKBUILD"
           test -f "$PMAPORTS/device/testing/linux-samsung-a04e/APKBUILD"
 
-      - name: Configure pmbootstrap for samsung-a04e
+      - name: Initialize pmbootstrap for samsung-a04e
         shell: bash
         run: |
           set -euo pipefail
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config aports "$A04E_PMAPORTS"
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config work "$A04E_PMWORK"
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config device samsung-a04e
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config user pmos
+          cat > "$RUNNER_TEMP/pmbootstrap-init.exp" <<'EXPECT'
+          set timeout 900
+          log_user 1
+          spawn pmbootstrap --aports $env(A04E_PMAPORTS) --work $env(A04E_PMWORK) --jobs 2 init --shallow-initial-clone
+          expect {
+            -re {Work path.*:} { send "\\r"; exp_continue }
+            -re {Device.*:} { send "samsung-a04e\\r"; exp_continue }
+            -re {Kernel.*:} { send "downstream\\r"; exp_continue }
+            -re {Username.*:} { send "pmos\\r"; exp_continue }
+            -re {User interface.*:} { send "none\\r"; exp_continue }
+            -re {Change them.*:} { send "n\\r"; exp_continue }
+            -re {Extra packages.*:} { send "none\\r"; exp_continue }
+            -re {Use this timezone.*:} { send "y\\r"; exp_continue }
+            -re {Device hostname.*:} { send "\\r"; exp_continue }
+            -re {Would you like to copy your SSH public keys.*:} { send "n\\r"; exp_continue }
+            eof
+            timeout { puts stderr "pmbootstrap init timed out on an unexpected prompt"; exit 1 }
+          }
+          EXPECT
+          expect "$RUNNER_TEMP/pmbootstrap-init.exp"
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config ui none
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config user pmos
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config keymap us
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config timezone UTC
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config service_manager openrc
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config is_default_channel true
-          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 init --shallow-initial-clone
           pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 status
 
       - name: Build A04e device and kernel packages
