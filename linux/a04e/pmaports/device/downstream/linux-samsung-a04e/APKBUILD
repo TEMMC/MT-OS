@@ -95,11 +95,17 @@ PY
 	[ -s "$_outdir/arch/arm64/include/generated/uapi/asm/types.h" ] ||
 		die "ARM64 generated UAPI asm/types.h is missing"
 
-	# This vendor Makefile hard-codes an in-tree Android Clang path that is
-	# absent from the source archive. Use postmarketOS' installed LLVM tools
-	# consistently for Kconfig preparation, DTB generation and kernel metadata.
+	# downstreamkernel_prepare invokes oldconfig, which builds host-side
+	# SELinux tools before Kbuild has completed its normal header preparation.
+	# Supply all ARM64 UAPI include roots explicitly so genheaders can resolve
+	# <asm/types.h> during that early host-tool build.
+	install -Dm644 "$srcdir/$_config" "$builddir/$_outdir/.config"
+	export HOSTCFLAGS="${HOSTCFLAGS:-} -I$builddir/arch/arm64/include/uapi -I$builddir/$_outdir/arch/arm64/include/generated/uapi -I$builddir/include/uapi -I$builddir/$_outdir/include/generated/uapi"
+
+	# Use postmarketOS' installed LLVM tools consistently for preparation,
+	# DTB generation and kernel metadata. Preserve the vendor compiler header.
 	export LLVM=1 LLVM_IAS=1
-	. downstreamkernel_prepare
+	REPLACE_GCCH=0 . downstreamkernel_prepare
 }
 build() {
 	unset LDFLAGS
