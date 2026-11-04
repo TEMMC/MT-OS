@@ -10,19 +10,18 @@
   "vendor_interface_android_version": 12,
   "vendor_vndk": 31,
   "stock_kernel": "4.19.191",
-  "boot_layout": "single-slot partition naming observed (not verified as A-only)",
+  "boot_layout": "A-only (user-confirmed; not independently proven by slot properties)",
   "initial_distribution": "postmarketOS",
   "initial_interface": "Phosh",
   "status": "bring-up-research",
   "flashable": false,
   "verified_linux_boot": false,
   "required_validation": [
-    "exact board and hardware revision",
+    "exact physical display panel variant and DRM/KMS implementation",
+    "exact physical touchscreen controller and Linux driver",
     "bootloader unlock and download-mode recovery path",
-    "boot image header/version, ramdisk format, DTB/DTBO relationship and partition sizes",
-    "read-only capture of /proc/config.gz and comparison with source defconfig",
-    "mainline MT6765 kernel feasibility",
-    "display panel and touchscreen driver bindings",
+    "downstream kernel build reproducibility with a postmarketOS toolchain",
+    "safe diagnostic initramfs boot test",
     "storage, USB, Wi-Fi, audio and power management"
   ],
   "observed_partitions": {
@@ -37,11 +36,28 @@
   },
   "observed_hardware": {
     "device_tree_compatible": [
-      "mediatek,MT6765"
+      "Samsung,A04e EUR OPEN 00",
+      "Mediatek,MT6765"
     ],
-    "touchscreen": [
+    "board_family": "Samsung HS04",
+    "touchscreen_runtime_names": [
       "mtk-tpd",
       "jadard-touchscreen"
+    ],
+    "touchscreen_source_candidates": [
+      "Chipone TDDI",
+      "Jadard JD9365T",
+      "GalaxyCore"
+    ],
+    "display_resolution": "720x1600",
+    "display_source_candidates": [
+      "JD9365T TXD CTC",
+      "GC7202 LS HSD",
+      "NL9911C HLT HKC",
+      "JD9365T TXD BOE",
+      "NL9911C HR HR",
+      "JD9365T TXD CTC JBPD",
+      "HS04 default"
     ],
     "gpu_driver": "pvrsrvkm",
     "gpu_device": "mediatek,doma",
@@ -50,6 +66,8 @@
       "card0",
       "renderD128"
     ],
-    "kernel_config_available_at": "/proc/config.gz (not included in uploaded report)"
+    "boot_header_version": 2,
+    "boot_page_size": 2048,
+    "dtbo_overlay_count": 1
   }
 }
