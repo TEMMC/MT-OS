@@ -99,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 --assume-yes install \
-            --password pmos --no-fde --no-firewall --no-recommends
+            --password pmos --no-firewall --no-recommends
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 initfs build
 
       - name: Export and validate build outputs
