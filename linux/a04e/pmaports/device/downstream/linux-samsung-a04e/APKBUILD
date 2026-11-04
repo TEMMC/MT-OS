@@ -58,9 +58,9 @@ for base, dirs, files in os.walk(root):
         path = os.path.join(base, name)
         with open(path, "rb") as stream:
             data = stream.read()
-        normalized = data.replace(b"\\r\\n", b"\\n").replace(b"\\r", b"\\n")
-        normalized = b"\\n".join(line[1:] if line.startswith(b"+") else line
-                                  for line in normalized.split(b"\\n"))
+        normalized = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        normalized = b"\n".join(line[1:] if line.startswith(b"+") else line
+                                  for line in normalized.split(b"\n"))
         if normalized != data:
             with open(path, "wb") as stream:
                 stream.write(normalized)
@@ -74,7 +74,7 @@ for base, dirs, files in os.walk(root):
         if name == "Kconfig":
             path = os.path.join(base, name)
             data = open(path, "rb").read()
-            if b"\\r" in data or any(line.startswith(b"+") for line in data.split(b"\\n")):
+            if b"\r" in data or any(line.startswith(b"+") for line in data.split(b"\n")):
                 raise SystemExit("Kconfig normalization failed: " + path)
 PY
 
@@ -86,6 +86,14 @@ PY
 	if grep -Fq 'drivers/kernelsu/Kconfig' "$builddir/drivers/Kconfig"; then
 		die "KernelSU Kconfig reference remains in the source archive"
 	fi
+
+	# Generate ARM64 generic UAPI asm symlinks before downstreamkernel_prepare.
+	# The host SELinux genheaders utility includes linux/capability.h, which
+	# requires the generated arch/arm64/.../asm/types.h header.
+	mkdir -p "$_outdir"
+	make O="$_outdir" ARCH="$_carch" LLVM=1 LLVM_IAS=1 uapi-asm-generic
+	[ -s "$_outdir/arch/arm64/include/generated/uapi/asm/types.h" ] ||
+		die "ARM64 generated UAPI asm/types.h is missing"
 
 	# This vendor Makefile hard-codes an in-tree Android Clang path that is
 	# absent from the source archive. Use postmarketOS' installed LLVM tools
