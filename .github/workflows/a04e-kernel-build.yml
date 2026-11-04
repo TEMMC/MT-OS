@@ -46,6 +46,7 @@ jobs:
           (
             cd "$RUNNER_TEMP/a04e-toolchains"
             sha256sum *.tar.* | tee SHA256SUMS.txt
+            sha512sum *.tar.* "$RUNNER_TEMP/a04e-src/kernel.tar.gz" | tee SHA512SUMS.txt
           )
           tar -xf "$RUNNER_TEMP/a04e-src/kernel.tar.gz" -C "$RUNNER_TEMP/a04e-src"
           tar -xf "$RUNNER_TEMP/a04e-toolchains/clang-r383902.tar.gz" -C "$RUNNER_TEMP/a04e-toolchains"
@@ -97,6 +98,7 @@ jobs:
           cp "$A04E_SRC/out/arch/arm64/boot/Image.gz" "$RUNNER_TEMP/a04e-output/"
           cp "$A04E_SRC/out/.config" "$RUNNER_TEMP/a04e-output/kernel.config"
           cp "$RUNNER_TEMP/a04e-toolchains/SHA256SUMS.txt" "$RUNNER_TEMP/a04e-output/"
+          cp "$RUNNER_TEMP/a04e-toolchains/SHA512SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256SUM.txt" "$RUNNER_TEMP/a04e-output/"
 
       - name: Upload kernel build diagnostics (not a flashable image)
