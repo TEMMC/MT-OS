@@ -1,0 +1,87 @@
+# Reference: https://postmarketos.org/vendorkernel
+# Kernel config: arch/arm64/configs/a04e_defconfig
+# Toolchain selection is pinned in ../toolchains.json.
+
+pkgname=linux-samsung-a04e
+pkgver=4.19.191
+pkgrel=0
+pkgdesc="Samsung Galaxy A04e downstream kernel (bring-up only)"
+arch="aarch64"
+_carch="arm64"
+_flavor="samsung-a04e"
+url="https://github.com/ravindu644/android_kernel_a042f"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps pmb:cross-native"
+makedepends="
+	bash
+	bc
+	bison
+	devicepkg-dev
+	flex
+	gmp-dev
+	openssl-dev
+	perl
+	python3
+	rsync
+"
+
+_repository="android_kernel_a042f"
+_commit="7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
+_config="config-$_flavor.$arch"
+_clang_url="https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902.tar.gz"
+_gnu_url="https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
+source="
+	$pkgname-$_commit.tar.gz::https://github.com/ravindu644/$_repository/archive/$_commit.tar.gz
+	clang-r383902.tar.gz::$_clang_url
+	arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz::$_gnu_url
+	$_config
+"
+builddir="$srcdir/$_repository-$_commit"
+_outdir="out"
+
+prepare() {
+	default_prepare
+	export ANDROID_MAJOR_VERSION=r
+	. downstreamkernel_prepare
+}
+
+build() {
+	unset LDFLAGS
+
+	local clang
+	local cross_gcc
+	clang="$(find "$srcdir" -type f -path '*/bin/clang' -print -quit)"
+	cross_gcc="$(find "$srcdir" -type f -name 'aarch64-none-linux-gnu-gcc' -print -quit)"
+	[ -x "$clang" ] || die "Pinned clang-r383902 compiler was not found"
+	[ -x "$cross_gcc" ] || die "Pinned AArch64 GNU cross compiler was not found"
+
+	export ANDROID_MAJOR_VERSION=r
+	make O="$_outdir" ARCH="$_carch" CC="$clang" \
+		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
+		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y a04e_defconfig
+
+	"$builddir/scripts/kconfig/merge_config.sh" -m -O "$_outdir" \
+		"$_outdir/.config" "$srcdir/$_config"
+	make O="$_outdir" ARCH="$_carch" CC="$clang" \
+		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
+		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y olddefconfig
+	make O="$_outdir" ARCH="$_carch" CC="$clang" \
+		CROSS_COMPILE="${cross_gcc%gcc}" CLANG_TRIPLE=aarch64-linux-gnu- \
+		KCFLAGS="-w" CONFIG_SECTION_MISMATCH_WARN_ONLY=y \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1))-postmarketOS" -j"${JOBS:-2}"
+}
+
+package() {
+	downstreamkernel_package "$builddir" "$pkgdir" "$_carch" \
+		"$_flavor" "$_outdir"
+}
+
+# The upstream toolchain release currently publishes no checksums. URLs and
+# versions are pinned above; CI records SHA-256 values for every downloaded
+# archive. Replace SKIP with reviewed fixed hashes before upstream submission.
+sha512sums="
+SKIP
+SKIP
+SKIP
+SKIP
+"
