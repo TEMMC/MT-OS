@@ -1,0 +1,127 @@
+name: A04e postmarketOS image build
+
+on:
+  push:
+    paths:
+      - "linux/a04e/**"
+      - ".github/workflows/a04e-postmarketos-image.yml"
+  pull_request:
+    paths:
+      - "linux/a04e/**"
+      - ".github/workflows/a04e-postmarketos-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-a04e-postmarketos:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 240
+    steps:
+      - name: Check out MT-OS
+        uses: actions/checkout@v4
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
+            /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git python3 python3-pip python3-venv \
+            python3-yaml python3-requests python3-pexpect expect \
+            build-essential ca-certificates curl e2fsprogs jq rsync \
+            xz-utils zip unzip
+
+      - name: Prepare pmbootstrap and pmaports overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          PMB="$RUNNER_TEMP/pmbootstrap"
+          PMAPORTS="$RUNNER_TEMP/pmaports"
+          WORK="$RUNNER_TEMP/pmbootstrap-work"
+          mkdir -p "$HOME/.local/bin"
+          git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git "$PMB"
+          git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS"
+          mkdir -p "$PMAPORTS/device/testing"
+          cp -a "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/testing/." "$PMAPORTS/device/testing/"
+          ln -sf "$PMB/pmbootstrap.py" "$HOME/.local/bin/pmbootstrap"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          {
+            echo "A04E_PMB=$PMB"
+            echo "A04E_PMAPORTS=$PMAPORTS"
+            echo "A04E_PMWORK=$WORK"
+          } >> "$GITHUB_ENV"
+          test -f "$PMAPORTS/device/testing/device-samsung-a04e/APKBUILD"
+          test -f "$PMAPORTS/device/testing/linux-samsung-a04e/APKBUILD"
+
+      - name: Configure pmbootstrap for samsung-a04e
+        shell: bash
+        run: |
+          set -euo pipefail
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config aports "$A04E_PMAPORTS"
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config work "$A04E_PMWORK"
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config device samsung-a04e
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config user pmos
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config ui none
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config keymap us
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config timezone UTC
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config service_manager openrc
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 config is_default_channel true
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 init --shallow-initial-clone
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 status
+
+      - name: Build A04e device and kernel packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 build device-samsung-a04e
+
+      - name: Build minimal postmarketOS rootfs and boot image
+        shell: bash
+        run: |
+          set -euo pipefail
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 install \
+            --no-fde --no-sshd --no-firewall --no-recommends
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 initfs build
+
+      - name: Export and validate build outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/a04e-image-output"
+          mkdir -p "$OUT"
+          cd "$OUT"
+          pmbootstrap --aports "$A04E_PMAPORTS" --work "$A04E_PMWORK" --jobs 2 export
+          cd "$GITHUB_WORKSPACE"
+          find -L "$A04E_PMWORK" "$OUT" -type f \
+            \( -name '*.img' -o -name 'boot.img' -o -name 'initramfs*' -o -name 'vmlinuz*' \) \
+            -size +100k -print0 | while IFS= read -r -d '' file; do
+              cp -L "$file" "$OUT/$(basename "$file")"
+            done
+          if ! find "$OUT" -maxdepth 1 -type f -name '*.img' -size +1M | grep -q .; then
+            echo "No postmarketOS image file was exported."
+            find "$A04E_PMWORK" -maxdepth 5 -type f | head -200
+            exit 1
+          fi
+          cat > "$OUT/BUILD-INFO.txt" <<'INFO'
+          Target: Samsung Galaxy A04e SM-A042F
+          Distribution: postmarketOS edge
+          Device package: device-samsung-a04e
+          Kernel: Samsung downstream Linux 4.19.191
+          Interface: none (diagnostic bring-up image; DRM/KMS and touch are not ready)
+          Flashing: disabled in deviceinfo; do not flash this artifact
+          DTBO: the handset's original DTBO partition has not been replaced
+          INFO
+          sha256sum "$OUT"/* > "$OUT/SHA256SUMS.txt"
+          ls -lah "$OUT"
+
+      - name: Upload A04e postmarketOS bring-up image
+        uses: actions/upload-artifact@v4
+        with:
+          name: a04e-postmarketos-bringup-image
+          path: a04e-image-output/
+          if-no-files-found: error
+          retention-days: 30
