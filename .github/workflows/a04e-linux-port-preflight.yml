@@ -56,6 +56,7 @@ jobs:
       - name: Validate package safety and source pins
         run: |
           python3 - <<'PY'
+          import json
           from pathlib import Path
           deviceinfo = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/deviceinfo").read_text()
           kernel = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/APKBUILD").read_text()

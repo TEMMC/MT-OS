@@ -40,6 +40,15 @@ _outdir="out"
 prepare() {
 	default_prepare
 	. downstreamkernel_prepare
+
+	# This package reuses the already-built Image.gz and only generates DTBs.
+	# The source archive omits the KernelSU-Next submodule, while drivers/Kconfig
+	# unconditionally sources its Kconfig. Remove that include from this temporary
+	# DTB-build tree; the prebuilt kernel binary itself is not modified.
+	if grep -Fq 'source "drivers/kernelsu/Kconfig"' "$builddir/drivers/Kconfig"; then
+		sed -i '/^[[:space:]]*source "drivers\/kernelsu\/Kconfig"[[:space:]]*$/d' \\
+			"$builddir/drivers/Kconfig"
+	fi
 }
 
 build() {
