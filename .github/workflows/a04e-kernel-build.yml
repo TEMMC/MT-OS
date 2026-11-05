@@ -3,10 +3,11 @@ name: A04e downstream kernel build
 on:
   push:
     paths:
-      - "linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
+      - "linux/a04e/**"
+      - ".github/workflows/a04e-kernel-build.yml"
   pull_request:
     paths:
-      - "linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
+      - "linux/a04e/**"
       - ".github/workflows/a04e-kernel-build.yml"
   workflow_dispatch:
 
