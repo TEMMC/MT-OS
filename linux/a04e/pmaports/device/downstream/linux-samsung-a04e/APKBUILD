@@ -1,6 +1,7 @@
 # Reference: https://postmarketos.org/vendorkernel
 # The compressed Image.gz is reused from the verified CI kernel build.
-# Only the MT6765 base DTB and A04e board overlay are generated here.
+# Only the MT6765 base DTB and the complete A04e board DTB are generated here.
+# The A04e board DTS is a complete DTB, not a DTBO overlay.
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191
@@ -140,7 +141,7 @@ package() {
 	install -Dm644 "$dtb_dir/mt6765.dtb" \
 		"$pkgdir/boot/dtbs/mediatek/mt6765.dtb"
 	install -Dm644 "$dtb_dir/mt6765_a04e_eur_open_00.dtb" \
-		"$pkgdir/boot/dtbs/mediatek/mt6765_a04e_eur_open_00.dtbo"
+		"$pkgdir/boot/dtbs/mediatek/mt6765_a04e_eur_open_00.dtb"
 }
 
 sha512sums="
