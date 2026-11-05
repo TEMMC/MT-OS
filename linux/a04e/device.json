@@ -83,6 +83,34 @@
       "bound_driver": "jadard_tp",
       "input_name": "jadard-touchscreen",
       "note": "Chipone and GalaxyCore SPI nodes also exist; they are not the active input device in this report."
+    },
+    "kernel_driver_validation": {
+      "source_commit": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58",
+      "artifact_run_id": 41811886477,
+      "artifact_kernel_config_sha256": "verified in a04e-kernel-build-diagnostics artifact",
+      "display": {
+        "CONFIG_MTK_LCM": "y",
+        "CONFIG_MTK_FB": "y",
+        "CONFIG_CUSTOM_KERNEL_LCM": [
+          "lcd_jd9365t_txd_ctc_mipi_hdp_video",
+          "lcd_gc7202_ls_hsd_mipi_hdp_video",
+          "lcd_nl9911c_hlt_hkc_mipi_hdp_video",
+          "lcd_jd9365t_txd_boe_mipi_hdp_video",
+          "lcd_nl9911c_hr_hr_mipi_hdp_video",
+          "lcd_jd9365t_txd_ctc_jbpd_mipi_hdp_video",
+          "hs04_hdplus1600_dsi_default_vdo"
+        ],
+        "userspace_display": "legacy MediaTek framebuffer; DRM/KMS not enabled",
+        "physical_panel_variant": "not yet identified from runtime panel-selection evidence"
+      },
+      "touchscreen": {
+        "CONFIG_TOUCHSCREEN_JADARD_MODULE": "y",
+        "CONFIG_TOUCHSCREEN_JADARD_IC_JD9365T": "y",
+        "CONFIG_TOUCHSCREEN_JADARD_COMMON": "y",
+        "CONFIG_TOUCHSCREEN_JADARD_CHIPSET_M04": "y",
+        "runtime_controller": "jadard,jdcommon on spi1.1",
+        "linux_boot_validation": "not yet performed"
+      }
     }
   }
 }
