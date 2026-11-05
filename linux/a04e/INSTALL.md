@@ -8,14 +8,14 @@ The current work is a native Linux bring-up. There is no verified Linux boot on 
 
 ## Packaging method
 
-The device package is configured for postmarketOS `heimdall-bootimg` packaging:
+The intended layout is a standalone Android boot image plus a separate Linux root logical partition inside Android `super`:
 
-- Android boot image header v2
-- Page size 2048 bytes
-- Samsung PIT target label: `BOOT`
-- Heimdall boot-image packaging
+- `boot.img`: Android boot header v2, 2048-byte pages, Linux `Image.gz`, merged A04e DTB and postmarketOS initramfs. The intended physical target is the existing BOOT partition only.
+- `super`: the initramfs is configured to inspect `/dev/block/mmcblk0p44` and create device-mapper mappings for its logical partitions.
+- Linux root: a dedicated ext4 logical partition named `pmos_root`, selected by `pmos_root=/dev/mapper/pmos_root` in the kernel command line.
+- `userdata` (`/dev/block/mmcblk0p50`) is not selected as Linux root and is not intended to be wiped by this layout.
 
-These settings describe how the build system packages a boot image. They do not prove that the image is accepted by the bootloader, that the PIT label/capacity is correct for every SM-A042F revision, or that flashing is safe.
+The postmarketOS initramfs dynamic-partition support and kernel `dm-linear` support are now configured in the source. This does not create `pmos_root` inside the handset's current `super` metadata. The exact metadata slot count, group limits, partition extents, free space and preservation of any required vendor partitions must be inspected before generating or flashing a replacement `super.img`.
 
 ## Previously observed partition nodes
 
@@ -73,12 +73,13 @@ See [HARDWARE-ENABLEMENT.md](HARDWARE-ENABLEMENT.md) for the detailed source aud
 2. Obtain and verify the complete matching SM-A042F stock firmware.
 3. Establish and test a complete stock restoration path.
 4. Read the device PIT from Download Mode and independently confirm the BOOT partition label and capacity.
-5. Inspect the generated boot image header, kernel, ramdisk, DTB and final size.
-6. Confirm that the image was built using the exact matching kernel artifact.
-7. Attempt a non-destructive diagnostic boot first, if the bootloader supports it.
-8. Only after successful boot and recovery testing should a boot-only installation be considered.
+5. Read the actual `super` metadata in TWRP (including slot count, groups, extents and free space) and verify that `pmos_root` can be added without corrupting the metadata.
+6. Inspect the generated boot image header, kernel, ramdisk, DTB and final size.
+7. Confirm that the image was built using the exact matching kernel artifact and that the initramfs contains `make-dynpart-mappings`.
+8. Attempt a non-destructive diagnostic boot first, if the bootloader supports it.
+9. Only after successful boot and recovery testing should a boot-only installation be considered.
 
-Do not flash `super`, `userdata`, `vbmeta`, `dtbo` or `recovery` as part of this bring-up. Do not use a generic scatter file, generic MTK Download Agent package or another A04e variant's PIT.
+Do not flash a replacement `super.img` until it has been constructed from the exact handset metadata and a verified backup of the original `super`. Do not wipe `userdata`, replace `vbmeta`, `dtbo` or `recovery`, or use a generic scatter file, generic MTK Download Agent package or another A04e variant's PIT.
 
 ## Current CI
 
