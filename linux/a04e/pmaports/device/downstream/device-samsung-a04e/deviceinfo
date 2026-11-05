@@ -26,7 +26,7 @@ deviceinfo_flash_offset_dtb="0x07808000"
 
 # The vendor board DTS produces the MT6765 base DTB. Keep it as the
 # dedicated Android boot-image DTB component, not appended to Image.gz.
-deviceinfo_dtb="mediatek/mt6765"
+deviceinfo_dtb="mediatek/mt6765_a04e_eur_open_00"
 deviceinfo_append_dtb="false"
 deviceinfo_bootimg_qcdt="false"
 deviceinfo_bootimg_dtb_second="false"
