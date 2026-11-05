@@ -81,6 +81,15 @@ Detailed display/touch source analysis remains in
 - Added build-time checks that the Gen4M WLAN, WMT/BTIF, GPS and FM object
   trees were compiled.
 
+## Linux root filesystem discovery
+
+- The standalone Android header-v2 `boot.img` is configured to carry the A04e kernel, merged DTB and postmarketOS initramfs; automatic pmbootstrap flashing is disabled.
+- The device package declares the observed physical `super` node `/dev/block/mmcblk0p44` in `deviceinfo_super_partitions`, so postmarketOS initramfs can activate Android dynamic-partition mappings.
+- The kernel command line selects `pmos_root=/dev/mapper/pmos_root`; the intended ext4 Linux root is a logical partition named `pmos_root` inside `super`, not the physical `userdata` partition.
+- Kernel configuration and CI checks now require `CONFIG_BLK_DEV_DM=y` and `CONFIG_DM_LINEAR=y`.
+- The source configuration does not create that logical partition in the handset's existing `super` metadata. TWRP must provide the actual `lpdump` metadata, slot count, group size, partition extents and free-space report before a replacement `super.img` can be generated safely.
+- The postmarketOS initramfs must be inspected in the built artifact to confirm `make-dynpart-mappings` is actually bundled; kernel config checks alone do not prove the mapping tool is present.
+
 ## Current truthful status
 
 - Source pins and device safety metadata: committed.
