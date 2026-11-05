@@ -112,6 +112,40 @@ jobs:
           export MTK_COMBO_CHIP=CONNAC
           export WLAN_CHIP_ID=6765
           export MTK_ANDROID_WMT=y
+          # Kbuild's original Makefile constructs these paths from relative
+          # srctree/src values. In an O=out build that resolves the symlink
+          # targets incorrectly, so anchor the vendor-source links explicitly.
+          python3 - "$A04E_SRC/drivers/misc/mediatek/connectivity/Makefile" <<'PY'
+          import os
+          import sys
+          path = sys.argv[1]
+          text = open(path, encoding="utf-8").read()
+          replacements = {
+              "ABS_PATH_TO_WMT_DRV      = $(srctree)/../$(PATH_TO_WMT_DRV)":
+                  "ABS_PATH_TO_WMT_DRV      = $(A04E_CONNECTIVITY_SRC)/common",
+              "ABS_PATH_TO_WLAN_CHR_DRV = $(srctree)/../$(PATH_TO_WLAN_CHR_DRV)":
+                  "ABS_PATH_TO_WLAN_CHR_DRV = $(A04E_CONNECTIVITY_SRC)/wlan/adaptor",
+              "ABS_PATH_TO_WLAN_DRV     = $(srctree)/../$(PATH_TO_WLAN_DRV)":
+                  "ABS_PATH_TO_WLAN_DRV     = $(A04E_CONNECTIVITY_SRC)/wlan/core/gen4m",
+              "$(shell unlink $(srctree)/$(src)/wmt_drv)":
+                  "$(shell unlink $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_drv)",
+              "$(shell unlink $(srctree)/$(src)/wmt_chrdev_wifi)":
+                  "$(shell unlink $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_chrdev_wifi)",
+              "$(shell unlink $(srctree)/$(src)/wlan_drv_gen4m)":
+                  "$(shell unlink $(A04E_SRC)/drivers/misc/mediatek/connectivity/wlan_drv_gen4m)",
+              "$(shell ln -s $(ABS_PATH_TO_WMT_DRV)      $(srctree)/$(src)/wmt_drv)":
+                  "$(shell ln -sfn $(ABS_PATH_TO_WMT_DRV) $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_drv)",
+              "$(shell ln -s $(ABS_PATH_TO_WLAN_CHR_DRV) $(srctree)/$(src)/wmt_chrdev_wifi)":
+                  "$(shell ln -sfn $(ABS_PATH_TO_WLAN_CHR_DRV) $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_chrdev_wifi)",
+              "$(shell ln -s $(ABS_PATH_TO_WLAN_DRV)     $(srctree)/$(src)/wlan_drv_gen4m)":
+                  "$(shell ln -sfn $(ABS_PATH_TO_WLAN_DRV) $(A04E_SRC)/drivers/misc/mediatek/connectivity/wlan_drv_gen4m)",
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit("Expected connectivity Makefile path not found: " + old)
+              text = text.replace(old, new)
+          open(path, "w", encoding="utf-8").write(text)
+          PY
           make -C "$A04E_SRC" O=out ARCH=arm64 CC="$A04E_CLANG" \
             CROSS_COMPILE="$A04E_CROSS_COMPILE" \
             CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
