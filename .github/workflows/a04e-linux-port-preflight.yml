@@ -5,10 +5,14 @@ on:
     paths:
       - "linux/a04e/**"
       - ".github/workflows/a04e-linux-port-preflight.yml"
+      - ".github/workflows/a04e-postmarketos-image.yml"
+      - ".github/workflows/a04e-kernel-build.yml"
   pull_request:
     paths:
       - "linux/a04e/**"
       - ".github/workflows/a04e-linux-port-preflight.yml"
+      - ".github/workflows/a04e-postmarketos-image.yml"
+      - ".github/workflows/a04e-kernel-build.yml"
   workflow_dispatch:
 
 permissions:
@@ -72,12 +76,16 @@ jobs:
           device = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/APKBUILD").read_text()
           fragment = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64").read_text()
           cmdline = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/kernel-cmdline.conf").read_text()
+          image_workflow = Path(".github/workflows/a04e-postmarketos-image.yml").read_text()
           toolchain = json.loads(Path("linux/a04e/pmaports/toolchains.json").read_text())
           checks = {
               "automatic flashing is disabled": 'deviceinfo_flash_method="none"' in deviceinfo,
               "dynamic super partition is declared": 'deviceinfo_super_partitions="/dev/mmcblk0p44"' in deviceinfo,
               "Linux root selects the pmos_root logical partition": "pmos_root=/dev/mapper/pmos_root" in cmdline,
               "Linux root does not target userdata": "root=/dev/mmcblk0p50" not in cmdline,
+              "postmarketOS workflow builds Android super metadata": "lpmake" in image_workflow and "--metadata-slots 2" in image_workflow,
+              "postmarketOS workflow includes pmos_root in super": '"pmos_root:none:$PARTITION_SIZE:main"' in image_workflow,
+              "postmarketOS workflow verifies both exported images": '"$OUT/boot.img"' in image_workflow and '"$OUT/super.img"' in image_workflow,
               "Android boot header v2 configured": 'deviceinfo_header_version="2"' in deviceinfo,
               "Android boot page size configured": 'deviceinfo_flash_pagesize="2048"' in deviceinfo,
               "flashability is not falsely claimed": '"flashable": false' in Path("linux/a04e/device.json").read_text(),
