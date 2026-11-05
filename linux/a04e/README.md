@@ -1,31 +1,37 @@
 # MT Linux — Samsung Galaxy A04e (a04e)
 
 **Target:** Samsung Galaxy A04e, SM-A042F  
-**Codename:** `a04e` (confirm exact board revision from the handset)  
-**Initial OS target:** postmarketOS / Alpine Linux with Phosh  
-**Status:** bring-up research only — **no flashable image exists yet**.
+**SoC:** MediaTek MT6765 / HS04  
+**Architecture:** ARM64  
+**Status:** native Linux bring-up in progress — no verified native boot and no flashable release.
 
-## Why this is a port, not a GSI
+This is a device-specific postmarketOS port, not a generic ARM64 GSI. A Linux root filesystem alone cannot boot this handset; it needs the matching kernel, device tree, display/touch drivers, power and connectivity support, firmware and a tested recovery path.
 
-A standalone Linux phone OS needs a device-specific boot chain, kernel, device tree, display, touchscreen, storage, audio, Wi-Fi and power support. An ARM64 root filesystem alone is not a bootable phone OS. The handset currently reports an MT6765 platform, Android 12 vendor interface (VNDK 31), Android 14 system, and a 4.19.191 Samsung kernel. These facts are useful for identifying the hardware but do not prove mainline Linux support.
+## Current implementation
 
-## Safety status
+- Downstream Linux 4.19.191 source pinned to `ravindu644/android_kernel_a042f` commit `7c1b304f2df8df4c85abe6fe84b8238d7521bd58`.
+- Stock A04e `a04e_defconfig` preserved and layered with a postmarketOS configuration fragment.
+- KernelSU-Next submodule pinned and staged separately because GitHub source archives omit submodule contents.
+- MT6765/MT6768 Linux 4.19 connectivity source pinned to `rsuntk-oss/mtk_connectivity_module` commit `3d48d43caa96b6f9be8a06199ee6eb2241d79153`.
+- Connectivity build selects MT6765/CONSYS_6765, MT6631/CONNAC, Gen4M Wi-Fi, WMT/BTIF Bluetooth transport, GPS and FM.
+- Kernel CI checks that the Gen4M, WMT/BTIF, GPS and FM objects are actually compiled.
+- Image CI waits for the matching kernel run, verifies its artifact and configuration, then builds the postmarketOS device image.
+- Android boot-header-v2 / 2048-byte Heimdall BOOT packaging metadata is configured. This is not a verified flashing procedure.
 
-- No boot, recovery, vendor, vbmeta, DTBO or other partition is modified by this project.
-- CI currently performs metadata and script validation only.
-- Do not flash generic postmarketOS, Ubuntu Touch, NativOS or Android GSIs as if they were a verified A04e Linux port.
-- Do not replace the Samsung kernel until a device-specific kernel and a tested recovery route exist.
-- Back up personal data and the complete stock firmware before any future boot-chain experiments.
+## Important hardware limitations
 
-## Milestones
+- Display uses the legacy MediaTek framebuffer/LCM path. A working MT6765 DRM/KMS path is not established, so Phosh is blocked.
+- Jadard touchscreen driver options and the HS04 SPI node are included, but native touch events are not tested.
+- MT6357 battery/charger support and SGM41513/UPM6910 charger candidates are enabled; charging is not yet tested on native Linux.
+- Gen4M Wi-Fi source is included, but matching proprietary stock firmware must be extracted before Wi-Fi can be considered operational.
+- Bluetooth WMT/BTIF low-level transport is included. A working BlueZ HCI adapter is not established.
+- GPS, FM, audio, SIM/modem, camera, GPU acceleration, sensors and suspend/resume are not validated on native Linux.
 
-1. **Hardware inventory:** collect exact model/board/SoC, booted device-tree compatibility, kernel config, partition map, display/touch drivers and available DRM interfaces.
-2. **Kernel feasibility:** identify a viable mainline MT6765 base, required downstream patches and bootloader hand-off requirements.
-3. **Device tree:** create and validate the A04e mainline DTS/DTB and panel/touch descriptions.
-4. **Early boot:** boot a diagnostic initramfs without touching Android data partitions.
-5. **Core hardware:** validate display, touch, storage, USB, Wi-Fi, audio, battery/charging and suspend/resume.
-6. **OS image:** integrate the working kernel/device package into a postmarketOS image.
-7. **Release:** publish only after repeatable boot tests and a documented recovery procedure.
+See:
+- [Hardware enablement audit](HARDWARE-ENABLEMENT.md)
+- [Current build status](BUILD-STATUS.md)
+- [Installation and recovery safety](INSTALL.md)
+- [Display/touch porting analysis](DISPLAY-TOUCH-PORTING-ANALYSIS.md)
 
 ## Collect handset diagnostics
 
@@ -35,41 +41,25 @@ On the rooted A04e, copy `scripts/collect-a04e.sh` to Termux and run:
 su -c sh ./collect-a04e.sh
 ```
 
-The script is read-only and writes a report directory under shared Download storage. It does not collect IMEI, serial number, accounts, contacts or message data. Review the report before sharing it. Device-tree binary export is opt-in because it may contain device-specific identifiers:
-
-```sh
-su -c sh ./collect-a04e.sh --include-dtb
-```
-
-## Known source leads
-
-- [A042F Samsung kernel source (archived)](https://github.com/ravindu644/android_kernel_a042f)
-- [MT6765 A04e kernel source mirror](https://github.com/Shubhamvis98/android_kernel_samsung_mt6765)
-- [postmarketOS porting documentation](https://wiki.postmarketos.org/wiki/Porting_to_a_new_device)
-- [postmarketOS device package repository](https://gitlab.com/postmarketOS/pmaports)
-
-These are research inputs, not proof that a mainline kernel or a working Linux port already exists.
-
-
-### Identify the physical LCD and touchscreen
-
-After collecting the standard inventory, run the second read-only collector:
+For panel/touch evidence:
 
 ```sh
 su -c sh ./collect-panel-touch.sh
 ```
 
-It records panel identifiers exposed by the running vendor kernel, touchscreen
-input metadata, matching device-tree strings, and filtered display/touch kernel
-log lines. Review `panel-touch-report.txt` for private values before sharing
-it. This evidence is required because the HS04 source contains several
-incompatible 720x1600 panel candidates; selecting one by resolution alone is
-unsafe.
+These collectors are read-only. Review their reports for private values before sharing.
 
-## Installation and flashing status
+## Firmware
 
-The device package is configured for `heimdall-bootimg` packaging to the Samsung `BOOT` partition (Android boot header v2, 2048-byte pages). This is not yet a validated handset flashing procedure. Read [INSTALL.md](INSTALL.md) for the exact evidence and safety gates. Do not flash this port until a matching stock restore path, PIT mapping, diagnostic boot, display, and touch have been tested.
+No proprietary Samsung firmware blobs are committed or redistributed. Matching MT6631/CONNAC firmware and configuration must be extracted from the user's own stock SM-A042F vendor image and staged separately.
 
-## CI meaning
+## Safety and CI meaning
 
-The GitHub Actions workflow checks the device manifest and shell syntax. A green CI result means the project files pass those checks; it does **not** mean Linux boots on the phone.
+- No partition is written by the CI workflows.
+- `device.json` remains `flashable: false`.
+- A successful kernel compile proves compilation only.
+- A successful postmarketOS image build proves packaging only.
+- Neither result proves that the phone boots or that any hardware works.
+- Do not flash BOOT, DTBO, vbmeta, recovery, super or userdata until the exact PIT mapping, stock restore route and diagnostic boot are independently verified.
+
+[View A04e GitHub Actions](https://github.com/TEMMC/MT-OS/actions?query=branch%3Alinux%2Fa04e-postmarketos-port)
