@@ -155,6 +155,13 @@ jobs:
           test -d "$A04E_SRC/out/drivers/misc/mediatek/connectivity"
           find "$A04E_SRC/out/drivers/misc/mediatek/connectivity" -path '*/wlan_drv_gen4m/*.o' -print -quit | grep -q .
           find "$A04E_SRC/out/drivers/misc/mediatek/connectivity" -path '*/wmt_chrdev_wifi/*.o' -print -quit | grep -q .
+          # Build the MediaTek HCI-over-UART transport as a loadable module.
+          # It is packaged for controlled testing, but is not auto-loaded until
+          # the handset's BTIF/TTY node and matching firmware are verified.
+          make -C "$A04E_SRC" O=out M="$A04E_CONNECTIVITY_SRC/bt/mt66xx" \
+            ARCH=arm64 CC="$A04E_CLANG" CROSS_COMPILE="$A04E_CROSS_COMPILE" \
+            MTK_CHIP_IF=uart CONFIG_SUPPORT_BLUEZ=y BT_PLATFORM=6765 modules
+          test -s "$A04E_CONNECTIVITY_SRC/bt/mt66xx/btmtk_uart_unify.ko"
           test -s "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           file "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           sha256sum "$A04E_SRC/out/arch/arm64/boot/Image.gz" \
@@ -162,6 +169,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/a04e-output"
           cp "$A04E_SRC/out/arch/arm64/boot/Image.gz" "$RUNNER_TEMP/a04e-output/"
           cp "$A04E_SRC/out/.config" "$RUNNER_TEMP/a04e-output/kernel.config"
+          cp "$A04E_CONNECTIVITY_SRC/bt/mt66xx/btmtk_uart_unify.ko" "$RUNNER_TEMP/a04e-output/"
+          (cd "$RUNNER_TEMP/a04e-output" && sha256sum btmtk_uart_unify.ko > BT-MODULE-SHA256-SUM.txt)
           cp "$RUNNER_TEMP/a04e-toolchains/SHA256SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/SHA512SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256-SUM.txt" "$RUNNER_TEMP/a04e-output/"
@@ -171,7 +180,7 @@ jobs:
           MT6765 Gen4M Wi-Fi: built-in via CONFIG_WLAN_DRV_BUILD_IN=y, HIF=axi, WLAN_CHIP_ID=6765
           WMT common source: included from the pinned 4.19 connectivity source tree
           Required proprietary firmware: not bundled; extract from matching stock SM-A042F vendor firmware
-          Bluetooth HCI transport: not included in this WLAN build step; separately pending
+          Bluetooth HCI: built as btmtk_uart_unify.ko (experimental); TTY binding and matching firmware still require on-device validation
           INFO
 
       - name: Upload kernel build diagnostics and reusable kernel
