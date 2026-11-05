@@ -75,7 +75,7 @@ jobs:
           toolchain = json.loads(Path("linux/a04e/pmaports/toolchains.json").read_text())
           checks = {
               "automatic flashing is disabled": 'deviceinfo_flash_method="none"' in deviceinfo,
-              "dynamic super partition is declared": 'deviceinfo_super_partitions="/dev/block/mmcblk0p44"' in deviceinfo,
+              "dynamic super partition is declared": 'deviceinfo_super_partitions="/dev/mmcblk0p44"' in deviceinfo,
               "Linux root selects the pmos_root logical partition": "pmos_root=/dev/mapper/pmos_root" in cmdline,
               "Linux root does not target userdata": "root=/dev/mmcblk0p50" not in cmdline,
               "Android boot header v2 configured": 'deviceinfo_header_version="2"' in deviceinfo,
