@@ -6,7 +6,14 @@
 CONFIG_DEVTMPFS=y
 CONFIG_DEVTMPFS_MOUNT=y
 
-# Storage/filesystems needed by the diagnostic initramfs and rootfs.
+# Boot-time storage discovery and native Linux root filesystem.
+# Keep eMMC, its GPT partition parser, and ext4 built into the kernel so the
+# initramfs can mount the dedicated userdata/rootfs partition without modules.
+CONFIG_MMC=y
+CONFIG_MMC_BLOCK=y
+CONFIG_MTK_EMMC_SUPPORT=y
+CONFIG_EFI_PARTITION=y
+CONFIG_MSDOS_PARTITION=y
 CONFIG_BLK_DEV_INITRD=y
 CONFIG_TMPFS=y
 CONFIG_EXT4_FS=y
@@ -48,4 +55,3 @@ CONFIG_TOUCHSCREEN_JADARD_MODULE=y
 CONFIG_TOUCHSCREEN_JADARD_IC_JD9365T=y
 CONFIG_TOUCHSCREEN_JADARD_COMMON=y
 CONFIG_TOUCHSCREEN_JADARD_CHIPSET_M04=y
-
