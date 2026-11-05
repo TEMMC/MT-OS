@@ -1,9 +1,33 @@
-# Minimal initramfs/storage requirements layered on the exact stock defconfig.
-# Display acceleration is deliberately NOT enabled here: MT6765 DRM/KMS
-# support has not been established for this downstream kernel.
+# A04e postmarketOS bring-up additions layered on the exact stock defconfig.
+# Only options backed by the pinned MT6765/HS04 source and observed hardware
+# are enabled here. Do not enable DRM/KMS or select a panel sequence by guess:
+# the vendor display path is legacy mtkfb/LCM and the physical panel is unknown.
+
+# Linux userspace device discovery (required by udev/OpenRC initramfs).
 CONFIG_DEVTMPFS=y
 CONFIG_DEVTMPFS_MOUNT=y
+
+# Storage/filesystems needed by the diagnostic initramfs and rootfs.
 CONFIG_BLK_DEV_INITRD=y
 CONFIG_TMPFS=y
 CONFIG_EXT4_FS=y
 CONFIG_F2FS_FS=y
+
+# BlueZ profiles and the MediaTek CONSYS_6765 HCI path.
+# MTK_COMBO_COMM is the shared connectivity layer; MTK_COMBO_BT_HCI is
+# explicitly the vendor's BlueZ HCI driver (not the Android Bluedroid node).
+CONFIG_BT_RFCOMM=y
+CONFIG_BT_BNEP=y
+CONFIG_BT_HIDP=y
+CONFIG_MTK_COMBO_COMM=y
+CONFIG_MTK_COMBO_BT_HCI=y
+
+# Keep the already-confirmed A04e legacy display and active Jadard path.
+# These are vendor-kernel drivers; they are not proof of a working DRM
+# compositor or of the physical LCD panel variant.
+CONFIG_MTK_LCM=y
+CONFIG_MTK_FB=y
+CONFIG_TOUCHSCREEN_JADARD_MODULE=y
+CONFIG_TOUCHSCREEN_JADARD_IC_JD9365T=y
+CONFIG_TOUCHSCREEN_JADARD_COMMON=y
+CONFIG_TOUCHSCREEN_JADARD_CHIPSET_M04=y
