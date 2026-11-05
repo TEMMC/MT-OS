@@ -24,7 +24,7 @@ REPORT="$OUT/panel-touch-report.txt"
            /proc/device-tree/atag,videolfb-lcmname \
            /sys/class/graphics/fb0/name /sys/class/graphics/fb0/modes \
            /sys/class/graphics/fb0/virtual_size /sys/class/graphics/fb0/device/uevent; do
-    if [ -r "$f" ]; then echo "--- $f"; tr '\\000' ' ' < "$f" 2>/dev/null; echo; fi
+    if [ -r "$f" ]; then echo "--- $f"; tr '\000' ' ' < "$f" 2>/dev/null; echo; fi
   done
   echo
   echo "== SPI touchscreen binding =="
@@ -35,7 +35,7 @@ REPORT="$OUT/panel-touch-report.txt"
     esac
     echo "--- $d"
     for f in "$d/modalias" "$d/uevent" "$d/of_node/compatible" "$d/of_node/status"; do
-      [ -r "$f" ] && { echo "[$f]"; tr '\\000' ' ' < "$f" 2>/dev/null; echo; }
+      [ -r "$f" ] && { echo "[$f]"; tr '\000' ' ' < "$f" 2>/dev/null; echo; }
     done
     [ -L "$d/driver" ] && echo "driver=$(readlink "$d/driver")"
   done
@@ -58,7 +58,7 @@ REPORT="$OUT/panel-touch-report.txt"
   for f in /sys/class/input/input*/name /sys/class/input/input*/phys \
            /sys/class/input/input*/device/modalias /sys/class/input/input*/device/uevent \
            /sys/class/input/input*/device/of_node/compatible; do
-    [ -r "$f" ] && { echo "--- $f"; tr '\\000' ' ' < "$f" 2>/dev/null; echo; }
+    [ -r "$f" ] && { echo "--- $f"; tr '\000' ' ' < "$f" 2>/dev/null; echo; }
   done
   for d in /sys/class/input/input*; do
     [ -e "$d" ] || continue
