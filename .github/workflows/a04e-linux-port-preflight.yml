@@ -48,10 +48,17 @@ jobs:
           assert pins["downstream"]["commit"] == commit
           assert pins["downstream"]["kernel_version"] == "4.19.191"
           assert pins["downstream"]["defconfig"] == "a04e_defconfig"
+          connectivity = pins["connectivity_modules"]
+          assert connectivity["commit"] == "9c4222a3d884e57cf82dda1668f356559e8c8444"
+          assert connectivity["wlan_chip_id"] == 6765
+          assert connectivity["combo_chip"] == "CONNAC"
           assert tools["kernel_source"]["commit"] == commit
           assert tools["compiler"]["name"] == "clang-r383902"
           assert tools["cross_toolchain"]["name"] == "arm-gnu-toolchain-14.2.rel1"
           assert "SKIP  Image.gz" in kernel_apkbuild  # The image workflow validates the matching kernel artifact SHA-256 before staging it.
+          assert "coreutils" in kernel_apkbuild
+          assert "btmtk_uart_unify.ko" in kernel_apkbuild
+          assert "SKIP  btmtk_uart_unify.ko" in kernel_apkbuild
           print("A04e hardware and source pins are internally consistent.")
           PY
 
