@@ -10,6 +10,7 @@ deviceinfo_chassis="handset"
 deviceinfo_external_storage="true"
 deviceinfo_screen_width="720"
 deviceinfo_screen_height="1600"
+deviceinfo_root_filesystem="ext4"
 
 # Stock boot partition is an Android boot image (header v2, 2048-byte pages).
 # Samsung Odin/Heimdall boot-image mode matches this boot-image format.
@@ -17,6 +18,7 @@ deviceinfo_screen_height="1600"
 # any partition is flashed; this setting only enables correct image packaging.
 deviceinfo_flash_method="heimdall-bootimg"
 deviceinfo_flash_heimdall_partition_kernel="BOOT"
+deviceinfo_flash_heimdall_partition_rootfs="USERDATA"
 deviceinfo_generate_bootimg="true"
 deviceinfo_header_version="2"
 deviceinfo_flash_pagesize="2048"
