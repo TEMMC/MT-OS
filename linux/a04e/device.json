@@ -17,12 +17,13 @@
   "flashable": false,
   "verified_linux_boot": false,
   "required_validation": [
-    "exact physical display panel variant and DRM/KMS implementation",
-    "exact physical touchscreen controller and Linux driver",
-    "bootloader unlock and download-mode recovery path",
-    "downstream kernel build reproducibility with a postmarketOS toolchain",
-    "safe diagnostic initramfs boot test",
-    "storage, USB, Wi-Fi, audio and power management"
+    "identify exact physical LCD panel variant and its vendor initialization sequence",
+    "port or validate the MTK display pipeline for Linux userspace (legacy mtkfb is not DRM/KMS)",
+    "validate Jadard driver and SPI resources under the packaged kernel/initramfs",
+    "verify bootloader unlock and Samsung Download Mode recovery path",
+    "verify Heimdall/Odin PIT mapping and boot-image flashing on this exact handset",
+    "boot a diagnostic initramfs without touching Android data partitions",
+    "validate storage, USB, Wi-Fi, audio, battery/charging and suspend/resume"
   ],
   "observed_partitions": {
     "boot": "/dev/block/mmcblk0p37",
@@ -68,6 +69,20 @@
     ],
     "boot_header_version": 2,
     "boot_page_size": 2048,
-    "dtbo_overlay_count": 1
+    "dtbo_overlay_count": 1,
+    "runtime_display": {
+      "framebuffer": "mtkfb",
+      "mode": "720x1600",
+      "panel_binding": "mediatek,lcm-panel",
+      "panel_variant": "not exposed by the supplied runtime report; do not select a JD9365T/GC7202/NL9911C sequence yet",
+      "drm_kms": "not established"
+    },
+    "touchscreen_active": {
+      "spi_device": "spi1.1",
+      "compatible": "jadard,jdcommon",
+      "bound_driver": "jadard_tp",
+      "input_name": "jadard-touchscreen",
+      "note": "Chipone and GalaxyCore SPI nodes also exist; they are not the active input device in this report."
+    }
   }
 }
