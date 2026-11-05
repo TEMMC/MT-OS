@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           COMMIT="7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
           KSU_COMMIT="56c55b692a00d90c0568a57ef5a8ed0daa23bb9a"
-          CONNECTIVITY_COMMIT="9c4222a3d884e57cf82dda1668f356559e8c8444"
+          CONNECTIVITY_COMMIT="3d48d43caa96b6f9be8a06199ee6eb2241d79153"
           mkdir -p "$RUNNER_TEMP/a04e-src" "$RUNNER_TEMP/a04e-toolchains"
           curl --fail --location --retry 5 --retry-all-errors \
             "https://github.com/ravindu644/android_kernel_a042f/archive/$COMMIT.tar.gz" \
@@ -50,7 +50,7 @@ jobs:
             "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" \
             -o "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
           curl --fail --location --retry 5 --retry-all-errors \
-            "https://github.com/AbzRaider/vendor-mediatek-kernel_modules-connectivity_4.19/archive/$CONNECTIVITY_COMMIT.tar.gz" \
+            "https://github.com/rsuntk-oss/mtk_connectivity_module/archive/$CONNECTIVITY_COMMIT.tar.gz" \
             -o "$RUNNER_TEMP/a04e-src/connectivity-4.19.tar.gz"
           (
             cd "$RUNNER_TEMP/a04e-toolchains"
@@ -59,7 +59,7 @@ jobs:
           )
           tar -xf "$RUNNER_TEMP/a04e-src/kernel.tar.gz" -C "$RUNNER_TEMP/a04e-src"
           SRC="$RUNNER_TEMP/a04e-src/android_kernel_a042f-$COMMIT"
-          CONNECTIVITY="$RUNNER_TEMP/a04e-src/vendor/mediatek/kernel_modules/connectivity"
+          CONNECTIVITY="$RUNNER_TEMP/a04e-src/mtk_connectivity_module"
           mkdir -p "$SRC/KernelSU-Next" "$CONNECTIVITY"
           tar -xzf "$RUNNER_TEMP/a04e-src/kernelsu-next.tar.gz" --strip-components=1 -C "$SRC/KernelSU-Next"
           tar -xzf "$RUNNER_TEMP/a04e-src/connectivity-4.19.tar.gz" --strip-components=1 -C "$CONNECTIVITY"
@@ -67,6 +67,15 @@ jobs:
           test -f "$CONNECTIVITY/common/common_main/platform/mt6765.c"
           test -f "$CONNECTIVITY/wlan/adaptor/Makefile"
           test -f "$CONNECTIVITY/wlan/core/gen4m/Makefile"
+          test -f "$CONNECTIVITY/bt/mt66xx/wmt/Makefile"
+          # This pinned vendor tree is the MT6765/MT6768 4.19 connectivity
+          # implementation. Replace the old adapter-only subtree with its
+          # matching in-tree WMT, Gen4M, GPS, FM and BTIF sources.
+          DEST="$SRC/drivers/misc/mediatek/connectivity"
+          rm -rf "$DEST/common" "$DEST/wlan" "$DEST/gps" "$DEST/fmradio" "$DEST/bt" "$DEST/power_throttling"
+          cp -a "$CONNECTIVITY"/. "$DEST/"
+          test -s "$DEST/Makefile"
+          test -s "$DEST/Kconfig"
           tar -xf "$RUNNER_TEMP/a04e-toolchains/clang-r383902.tar.gz" -C "$RUNNER_TEMP/a04e-toolchains"
           tar -xf "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" -C "$RUNNER_TEMP/a04e-toolchains"
           test -f "$SRC/Makefile"
@@ -104,64 +113,23 @@ jobs:
           set -euo pipefail
           export ARCH=arm64
           export ANDROID_MAJOR_VERSION=r
-          # The A04e uses MediaTek CONSYS_6765 / Gen4M connectivity. The
-          # downstream Makefile consumes this build variable (not Kconfig)
-          # to link the matching vendor WLAN/WMT sources into the kernel.
-          export CONFIG_WLAN_DRV_BUILD_IN=y
-          export CONFIG_MTK_COMBO_WIFI_HIF=axi
-          export MTK_COMBO_CHIP=CONNAC
-          export WLAN_CHIP_ID=6765
-          export MTK_ANDROID_WMT=y
-          # Kbuild's original Makefile constructs these paths from relative
-          # srctree/src values. In an O=out build that resolves the symlink
-          # targets incorrectly, so anchor the vendor-source links explicitly.
-          python3 - "$A04E_SRC/drivers/misc/mediatek/connectivity/Makefile" <<'PY'
-          import os
-          import sys
-          path = sys.argv[1]
-          text = open(path, encoding="utf-8").read()
-          replacements = {
-              "ABS_PATH_TO_WMT_DRV      = $(srctree)/../$(PATH_TO_WMT_DRV)":
-                  "ABS_PATH_TO_WMT_DRV      = $(A04E_CONNECTIVITY_SRC)/common",
-              "ABS_PATH_TO_WLAN_CHR_DRV = $(srctree)/../$(PATH_TO_WLAN_CHR_DRV)":
-                  "ABS_PATH_TO_WLAN_CHR_DRV = $(A04E_CONNECTIVITY_SRC)/wlan/adaptor",
-              "ABS_PATH_TO_WLAN_DRV     = $(srctree)/../$(PATH_TO_WLAN_DRV)":
-                  "ABS_PATH_TO_WLAN_DRV     = $(A04E_CONNECTIVITY_SRC)/wlan/core/gen4m",
-              "$(shell unlink $(srctree)/$(src)/wmt_drv)":
-                  "$(shell unlink $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_drv)",
-              "$(shell unlink $(srctree)/$(src)/wmt_chrdev_wifi)":
-                  "$(shell unlink $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_chrdev_wifi)",
-              "$(shell unlink $(srctree)/$(src)/wlan_drv_gen4m)":
-                  "$(shell unlink $(A04E_SRC)/drivers/misc/mediatek/connectivity/wlan_drv_gen4m)",
-              "$(shell ln -s $(ABS_PATH_TO_WMT_DRV)      $(srctree)/$(src)/wmt_drv)":
-                  "$(shell ln -sfn $(ABS_PATH_TO_WMT_DRV) $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_drv)",
-              "$(shell ln -s $(ABS_PATH_TO_WLAN_CHR_DRV) $(srctree)/$(src)/wmt_chrdev_wifi)":
-                  "$(shell ln -sfn $(ABS_PATH_TO_WLAN_CHR_DRV) $(A04E_SRC)/drivers/misc/mediatek/connectivity/wmt_chrdev_wifi)",
-              "$(shell ln -s $(ABS_PATH_TO_WLAN_DRV)     $(srctree)/$(src)/wlan_drv_gen4m)":
-                  "$(shell ln -sfn $(ABS_PATH_TO_WLAN_DRV) $(A04E_SRC)/drivers/misc/mediatek/connectivity/wlan_drv_gen4m)",
-          }
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit("Expected connectivity Makefile path not found: " + old)
-              text = text.replace(old, new)
-          open(path, "w", encoding="utf-8").write(text)
-          PY
+          # The pinned vendor Makefile derives CONNAC, WLAN_CHIP_ID=6765,
+          # HIF=axi, WMT and BT_PLATFORM=connac1x from the selected Kconfig.
+          export CONFIG_DRV_BUILD_IN=y
+          export TARGET_BUILD_VARIANT=user
           make -C "$A04E_SRC" O=out ARCH=arm64 CC="$A04E_CLANG" \
             CROSS_COMPILE="$A04E_CROSS_COMPILE" \
             CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
             CONFIG_SECTION_MISMATCH_WARN_ONLY=y \
             KBUILD_BUILD_VERSION=1-postmarketOS -j2
-          # Fail if the built-in Gen4M source tree was not actually compiled.
-          test -d "$A04E_SRC/out/drivers/misc/mediatek/connectivity"
-          find "$A04E_SRC/out/drivers/misc/mediatek/connectivity" -path '*/wlan_drv_gen4m/*.o' -print -quit | grep -q .
-          find "$A04E_SRC/out/drivers/misc/mediatek/connectivity" -path '*/wmt_chrdev_wifi/*.o' -print -quit | grep -q .
-          # Build the MediaTek HCI-over-UART transport as a loadable module.
-          # It is packaged for controlled testing, but is not auto-loaded until
-          # the handset's BTIF/TTY node and matching firmware are verified.
-          make -C "$A04E_SRC" O=out M="$A04E_CONNECTIVITY_SRC/bt/mt66xx" \
-            ARCH=arm64 CC="$A04E_CLANG" CROSS_COMPILE="$A04E_CROSS_COMPILE" \
-            MTK_CHIP_IF=uart CONFIG_SUPPORT_BLUEZ=y BT_PLATFORM=6765 modules
-          test -s "$A04E_CONNECTIVITY_SRC/bt/mt66xx/btmtk_uart_unify.ko"
+          # Fail if the in-tree MT6765 combo components were not compiled.
+          CONN_OUT="$A04E_SRC/out/drivers/misc/mediatek/connectivity"
+          test -d "$CONN_OUT"
+          find "$CONN_OUT/wlan/core/gen4m" -name '*.o' -print -quit | grep -q .
+          find "$CONN_OUT/common" -name '*.o' -print -quit | grep -q .
+          find "$CONN_OUT/bt/mt66xx/wmt" -name '*.o' -print -quit | grep -q .
+          find "$CONN_OUT/gps" -name '*.o' -print -quit | grep -q .
+          find "$CONN_OUT/fmradio" -name '*.o' -print -quit | grep -q .
           test -s "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           file "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           sha256sum "$A04E_SRC/out/arch/arm64/boot/Image.gz" \
@@ -169,18 +137,18 @@ jobs:
           mkdir -p "$RUNNER_TEMP/a04e-output"
           cp "$A04E_SRC/out/arch/arm64/boot/Image.gz" "$RUNNER_TEMP/a04e-output/"
           cp "$A04E_SRC/out/.config" "$RUNNER_TEMP/a04e-output/kernel.config"
-          cp "$A04E_CONNECTIVITY_SRC/bt/mt66xx/btmtk_uart_unify.ko" "$RUNNER_TEMP/a04e-output/"
-          (cd "$RUNNER_TEMP/a04e-output" && sha256sum btmtk_uart_unify.ko > BT-MODULE-SHA256-SUM.txt)
           cp "$RUNNER_TEMP/a04e-toolchains/SHA256SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/SHA512SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256-SUM.txt" "$RUNNER_TEMP/a04e-output/"
           cat > "$RUNNER_TEMP/a04e-output/connectivity-build-info.txt" <<INFO
-          Connectivity source: AbzRaider/vendor-mediatek-kernel_modules-connectivity_4.19
+          Connectivity source: rsuntk-oss/mtk_connectivity_module
           Connectivity commit: $A04E_CONNECTIVITY_COMMIT
-          MT6765 Gen4M Wi-Fi: built-in via CONFIG_WLAN_DRV_BUILD_IN=y, HIF=axi, WLAN_CHIP_ID=6765
-          WMT common source: included from the pinned 4.19 connectivity source tree
+          Platform: MT6765 / CONSYS_6765 / MT6631 / CONNAC
+          Wi-Fi: Gen4M built-in, HIF=axi, WLAN_CHIP_ID=6765
+          Bluetooth: MediaTek WMT/BTIF transport built-in (BlueZ HCI not yet verified)
+          GPS: MediaTek combo GPS driver built-in
+          FM: MediaTek FM radio driver built-in
           Required proprietary firmware: not bundled; extract from matching stock SM-A042F vendor firmware
-          Bluetooth HCI: built as btmtk_uart_unify.ko (experimental); TTY binding and matching firmware still require on-device validation
           INFO
 
       - name: Upload kernel build diagnostics and reusable kernel
