@@ -85,21 +85,21 @@ jobs:
           cat >> "$DEST/Kconfig" <<'KCONFIG'
 
 config DRV_BUILD_IN
-	select MTK_COMBO_BT
-	select MTK_COMBO_WIFI
-	select MTK_COMBO_GPS
-	select MTK_FMRADIO
-	select MTK_GPS_SUPPORT
-	bool "Build wireless related module as inline"
-	default y
-	help
-	  Build the MT6765 connectivity drivers into the kernel.
+    select MTK_COMBO_BT
+    select MTK_COMBO_WIFI
+    select MTK_COMBO_GPS
+    select MTK_FMRADIO
+    select MTK_GPS_SUPPORT
+    bool "Build wireless related module as inline"
+    default y
+    help
+      Build the MT6765 connectivity drivers into the kernel.
 
 config MTK_DISABLE_CONNECTIVITY_LOG
-	bool "Enable or Disable logging for Mediatek connectivity drivers"
-	default y
-	help
-	  Reduce verbose connectivity logging on low-memory devices.
+    bool "Enable or Disable logging for Mediatek connectivity drivers"
+    default y
+    help
+      Reduce verbose connectivity logging on low-memory devices.
 KCONFIG
           test -s "$DEST/Makefile"
           grep -Fq 'config DRV_BUILD_IN' "$DEST/Kconfig"
