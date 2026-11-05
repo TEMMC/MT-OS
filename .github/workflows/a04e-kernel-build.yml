@@ -12,6 +12,10 @@ on:
       - ".github/workflows/a04e-kernel-build.yml"
   workflow_dispatch:
 
+concurrency:
+  group: a04e-kernel-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
