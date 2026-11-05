@@ -267,8 +267,8 @@ jobs:
           dtb_size=struct.unpack_from("<I", data, 1648)[0]
           if not dtb_size: raise SystemExit("Android boot header v2 has no DTB payload")
           cmdline=(data[64:576].split(b"\0",1)[0]+data[608:1632].split(b"\0",1)[0]).decode("ascii","ignore")
-          if "root=/dev/mapper/pmos_root" not in cmdline:
-              raise SystemExit("boot.img command line does not select /dev/mapper/pmos_root")
+          if "pmos_root=/dev/mapper/pmos_root" not in cmdline:
+              raise SystemExit("boot.img command line does not select the postmarketOS pmos_root partition")
           if os.path.getsize(path) > 32*1024*1024:
               raise SystemExit("boot.img exceeds the observed 32 MiB BOOT partition")
           print(f"Android boot header v{version}; page={page}; kernel={kernel}; ramdisk={ramdisk}; size={len(data)}")
