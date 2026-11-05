@@ -165,6 +165,7 @@ jobs:
           # dm-linear is linked into dm-mod in this pinned Linux 4.19 tree;
           # CONFIG_DM_LINEAR is not a Kconfig symbol here.
           test -s "$A04E_SRC/out/drivers/md/dm-linear.o"
+          echo "PASS: device-mapper core and its built-in dm-linear target are present"
           test -s "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           file "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           sha256sum "$A04E_SRC/out/arch/arm64/boot/Image.gz" \
