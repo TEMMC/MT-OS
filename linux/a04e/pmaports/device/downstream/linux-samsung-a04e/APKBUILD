@@ -6,7 +6,7 @@
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191
-pkgrel=6
+pkgrel=7
 pkgdesc="Samsung Galaxy A04e downstream kernel (prebuilt kernel bring-up)"
 arch="aarch64"
 _carch="arm64"
@@ -39,6 +39,7 @@ source="
 	$pkgname-$_commit.tar.gz::https://github.com/ravindu644/$_repository/archive/$_commit.tar.gz
 	$_config
 	Image.gz
+	btmtk_uart_unify.ko
 "
 builddir="$srcdir/$_repository-$_commit"
 _outdir="out"
@@ -214,11 +215,18 @@ package() {
 	install -Dm644 "$srcdir/Image.gz" "$pkgdir/boot/vmlinuz-$_flavor"
 
 	# Kernel release metadata is needed by postmarketOS boot tooling.
-	make -s O="$_outdir" ARCH="$_carch" kernelrelease \
-		> "$pkgdir/kernel.release.tmp"
+	local kernel_release
+	kernel_release="$(make -s O="$_outdir" ARCH="$_carch" kernelrelease)"
+	printf '%s\n' "$kernel_release" > "$pkgdir/kernel.release.tmp"
 	install -Dm644 "$pkgdir/kernel.release.tmp" \
 		"$pkgdir/usr/share/kernel/$_flavor/kernel.release"
 	rm -f "$pkgdir/kernel.release.tmp"
+
+	# Experimental MediaTek HCI-over-UART transport, built against this exact
+	# kernel. It is packaged but deliberately not auto-loaded until the BTIF
+	# TTY name and stock firmware are verified on the handset.
+	install -Dm644 "$srcdir/btmtk_uart_unify.ko" \
+		"$pkgdir/lib/modules/$kernel_release/kernel/drivers/bluetooth/btmtk_uart_unify.ko"
 
 	local dtb_dir="$_outdir/arch/arm64/boot/dts/mediatek"
 	install -Dm644 "$dtb_dir/mt6765.dtb" \
@@ -233,4 +241,5 @@ sha512sums="
 f58007340bd0ced8e92f221057af681c321eaa5baa9ec2b76935b0cede15d6ac952790a1792fa98043a27e13f86789eeb029667601983627860e7859ce1fc437  linux-samsung-a04e-7c1b304f2df8df4c85abe6fe84b8238d7521bd58.tar.gz
 e0a644d06bb18f125ac21847ccbbee1977d18cd76c872c0b1149f214d27a76e995e05a3678f449970612348591d68d50a10863b9f2ba0423c623eb72aea4995b  config-samsung-a04e.aarch64
 SKIP  Image.gz
+SKIP  btmtk_uart_unify.ko
 "
