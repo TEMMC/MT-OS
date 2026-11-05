@@ -66,6 +66,10 @@ it. This evidence is required because the HS04 source contains several
 incompatible 720x1600 panel candidates; selecting one by resolution alone is
 unsafe.
 
+## Installation and flashing status
+
+The device package is configured for `heimdall-bootimg` packaging to the Samsung `BOOT` partition (Android boot header v2, 2048-byte pages). This is not yet a validated handset flashing procedure. Read [INSTALL.md](INSTALL.md) for the exact evidence and safety gates. Do not flash this port until a matching stock restore path, PIT mapping, diagnostic boot, display, and touch have been tested.
+
 ## CI meaning
 
 The GitHub Actions workflow checks the device manifest and shell syntax. A green CI result means the project files pass those checks; it does **not** mean Linux boots on the phone.
