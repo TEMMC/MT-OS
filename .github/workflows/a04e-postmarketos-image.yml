@@ -129,20 +129,39 @@ jobs:
         run: |
           set -euo pipefail
           OUT="$GITHUB_WORKSPACE/a04e-image-output"
-          mkdir -p "$OUT"
-          cd "$OUT"
-          pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 export "$OUT"
-          cd "$GITHUB_WORKSPACE"
-          find -L "$A04E_PMWORK" "$OUT" -type f \
-            \( -name '*.img' -o -name 'boot.img' -o -name 'initramfs*' -o -name 'vmlinuz*' \) \
-            -size +100k -print0 | while IFS= read -r -d '' file; do
-              cp -L "$file" "$OUT/$(basename "$file")"
-            done
-          if ! find "$OUT" -maxdepth 1 -type f -name '*.img' -size +1M | grep -q .; then
-            echo "No postmarketOS image file was exported."
-            find "$A04E_PMWORK" -maxdepth 5 -type f | head -200
+          EXPORTED="$RUNNER_TEMP/a04e-pmbootstrap-export"
+          mkdir -p "$OUT" "$EXPORTED"
+
+          # pmbootstrap export creates convenience symlinks in the export
+          # directory. The old workflow searched the entire pmbootstrap work
+          # tree with find -L, which traversed chroots/caches and could run for
+          # hours. Only inspect the small, dedicated export directory.
+          timeout --signal=TERM --kill-after=30s 10m \
+            pmbootstrap -c "$A04E_PMB_CONFIG" export --no-install "$EXPORTED"
+
+          shopt -s nullglob
+          exported_files=("$EXPORTED"/*)
+          if [ "${#exported_files[@]}" -eq 0 ]; then
+            echo "pmbootstrap export produced no entries."
+            find "$EXPORTED" -maxdepth 1 -printf '%y %p -> %l\\n'
             exit 1
           fi
+
+          for file in "${exported_files[@]}"; do
+            if [ -f "$file" ]; then
+              cp -L -- "$file" "$OUT/$(basename "$file")"
+            fi
+          done
+
+          if ! find "$OUT" -maxdepth 1 -type f -name '*.img' -size +1M -print -quit | grep -q .; then
+            echo "No postmarketOS image file larger than 1 MiB was exported."
+            echo "pmbootstrap export directory:"
+            find "$EXPORTED" -maxdepth 1 -printf '%y %p -> %l\\n'
+            echo "Collected output directory:"
+            find "$OUT" -maxdepth 1 -printf '%y %p (%s bytes)\\n'
+            exit 1
+          fi
+
           cat > "$OUT/BUILD-INFO.txt" <<'INFO'
           Target: Samsung Galaxy A04e SM-A042F
           Distribution: postmarketOS edge
@@ -161,8 +180,13 @@ jobs:
               echo "WARNING: $(basename "$boot") is ${boot_size} bytes; handset boot partition is only 33554432 bytes." >> "$OUT/BUILD-INFO.txt"
             fi
           done
-          sha256sum "$OUT"/* > "$OUT/SHA256SUMS.txt"
-          ls -lah "$OUT"
+
+          # Generate checksums only for actual deliverables, not the checksum
+          # file itself.
+          find "$OUT" -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -print0 |
+            sort -z | xargs -0 -r sha256sum > "$OUT/SHA256SUMS.txt"
+          echo "Validated export files:"
+          find "$OUT" -maxdepth 1 -type f -printf '%f %s bytes\\n' | sort
 
       - name: Print pmbootstrap log if the build fails
         if: failure()
