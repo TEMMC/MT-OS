@@ -7,7 +7,7 @@
 | Build environment | GitHub Actions |
 | Build system | pmbootstrap / Alpine APKBUILD |
 | Distribution target | postmarketOS edge |
-| Intended mobile interface | Phosh (blocked on DRM/KMS and input bring-up) |
+| Intended mobile interface | Phosh (now selected in the image build; runtime blocked on display backend) |
 | Kernel strategy | downstream Linux 4.19.191 with a separate mainline research path |
 | Target architecture | aarch64 |
 | Port branch | `linux/a04e-postmarketos-port` |
@@ -85,7 +85,8 @@ Detailed display/touch source analysis remains in
 - Full kernel compile with the pinned MT6765 connectivity tree: pending
   successful CI completion.
 - pmbootstrap device/kernel package build: pending the matching kernel
-  artifact.
+  artifact. The image workflow now selects `ui=phosh` and adds ModemManager,
+  NetworkManager and iio-sensor-proxy OpenRC services.
 - Diagnostic image: an earlier image artifact exists but used the previous
   kernel/configuration; it is not accepted as the current image.
 - Exact physical panel: unresolved.
@@ -96,6 +97,13 @@ Detailed display/touch source analysis remains in
   adapter is not established.
 - GPS/FM, audio, SIM/modem, GPU acceleration, camera and sensors: not
   validated on native Linux.
+- Phosh integration: configured in the postmarketOS image build; package/rootfs
+  installation is pending CI. This is packaging integration, not proof that
+  Phosh can start on the handset.
+- Phoc display backend: not verified. The current downstream kernel exposes
+  legacy MTK framebuffer/LCM, while the device has no validated DRM/KMS driver.
+  Phoc/Phosh therefore remain expected not to render until a compatible
+  compositor backend or DRM/KMS port is available.
 - Native Linux boot: not verified.
 - Flash procedure: not verified; no partition writes are authorized.
 
