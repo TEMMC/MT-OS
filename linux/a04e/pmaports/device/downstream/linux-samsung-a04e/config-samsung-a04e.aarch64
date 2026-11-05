@@ -14,9 +14,10 @@ CONFIG_MMC_BLOCK=y
 CONFIG_MTK_EMMC_SUPPORT=y
 CONFIG_EFI_PARTITION=y
 CONFIG_MSDOS_PARTITION=y
-# Android super logical partitions are exposed through dm-linear mappings.
+# Android super logical partitions are exposed by the device-mapper linear target.
+# In this pinned 4.19 tree dm-linear.o is linked into dm-mod whenever
+# CONFIG_BLK_DEV_DM=y; there is no CONFIG_DM_LINEAR Kconfig symbol.
 CONFIG_BLK_DEV_DM=y
-CONFIG_DM_LINEAR=y
 CONFIG_BLK_DEV_INITRD=y
 CONFIG_TMPFS=y
 CONFIG_EXT4_FS=y
