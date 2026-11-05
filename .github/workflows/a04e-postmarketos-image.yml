@@ -162,8 +162,8 @@ jobs:
           device = samsung-a04e
           kernel = downstream
           user = pmos
-          ui = none
-          extra_packages = none
+          ui = phosh
+          extra_packages = modemmanager modemmanager-openrc networkmanager networkmanager-openrc iio-sensor-proxy iio-sensor-proxy-openrc
           keymap = us
           locale = en_US.UTF-8
           timezone = UTC
@@ -181,7 +181,7 @@ jobs:
           set -euo pipefail
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 build device-samsung-a04e
 
-      - name: Build minimal postmarketOS rootfs and boot image
+      - name: Build experimental Phosh postmarketOS rootfs and boot image
         shell: bash
         run: |
           set -euo pipefail
@@ -230,10 +230,13 @@ jobs:
           cat > "$OUT/BUILD-INFO.txt" <<'INFO'
           Target: Samsung Galaxy A04e SM-A042F
           Distribution: postmarketOS edge
+          User interface: Phosh (experimental; Phoc/display backend not hardware-validated)
+          Mobile services: ModemManager, NetworkManager, iio-sensor-proxy
           Device package: device-samsung-a04e
           Kernel: reused Linux 4.19.191 Image.gz from matching successful kernel workflow run ${{ steps.kernel.outputs.run_id }}
           DTBs: rebuilt from the pinned A04e kernel source; not a full kernel rebuild
           Display/touch kernel support: legacy MediaTek mtkfb/LCM and Jadard JD9365T are enabled in the pinned kernel; actual panel variant and Linux userspace presentation remain unverified
+          Display: legacy MTK framebuffer/LCM only; no verified DRM/KMS backend. Phosh is packaged but may not start on-device until a working Phoc display backend is ported.
           Flashing: NOT VALIDATED; do not flash this artifact. Use only for offline inspection and controlled diagnostic boot planning
           Default diagnostic login: pmos / pmos; change it immediately if booted
           DTBO: the handset's original DTBO partition has not been replaced
