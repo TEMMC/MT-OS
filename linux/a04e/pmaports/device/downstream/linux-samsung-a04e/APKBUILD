@@ -132,7 +132,6 @@ build() {
 	grep -Fq 'lcd_jd9365t_txd_ctc_mipi_hdp_video' "$_outdir/.config" || die "A04e panel candidate list missing JD9365T CTC"
 	grep -Fq 'lcd_gc7202_ls_hsd_mipi_hdp_video' "$_outdir/.config" || die "A04e panel candidate list missing GC7202"
 	grep -Fq 'lcd_nl9911c_hlt_hkc_mipi_hdp_video' "$_outdir/.config" || die "A04e panel candidate list missing NL9911C"
-	grep -Fq 'drivers/input/touchscreen/mediatek/jdchipset' "$builddir/drivers/input/touchscreen/mediatek/Makefile" || true
 
 	# Generate only the DTB outputs. Do not compile the kernel again.
 	# Export symbol labels in the base DTB so the /plugin/ A04e overlay can
