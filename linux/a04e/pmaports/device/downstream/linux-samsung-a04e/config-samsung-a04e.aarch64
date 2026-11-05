@@ -1,7 +1,6 @@
 # A04e postmarketOS bring-up additions layered on the exact stock defconfig.
 # Only options backed by the pinned MT6765/HS04 source and observed hardware
-# are enabled here. Do not enable DRM/KMS or select a panel sequence by guess:
-# the vendor display path is legacy mtkfb/LCM and the physical panel is unknown.
+# are enabled here. The vendor display is legacy mtkfb/LCM, not DRM/KMS.
 
 # Linux userspace device discovery (required by udev/OpenRC initramfs).
 CONFIG_DEVTMPFS=y
@@ -13,25 +12,34 @@ CONFIG_TMPFS=y
 CONFIG_EXT4_FS=y
 CONFIG_F2FS_FS=y
 
-# MediaTek battery percentage/charge algorithm; the stock defconfig already
-# enables the matching legacy MT6397 PMIC MFD core.
-CONFIG_MTK_BATTERY=y
+# Preserve the stock MT6765 PMIC battery and charger drivers for the handset.
+# These are real Kconfig symbols in this kernel tree (not CONFIG_MTK_BATTERY).
+CONFIG_POWER_SUPPLY=y
+CONFIG_BATTERY_MT6357=y
+CONFIG_CHARGER_TYPE_MT6357=y
+CONFIG_MTK_CHARGER=y
+CONFIG_MTK_KERNEL_POWER_OFF_CHARGING=y
 
-# BlueZ profiles and the MediaTek CONSYS_6765 HCI path.
-# MTK_COMBO_COMM is the shared connectivity layer; MTK_COMBO_BT_HCI is
-# explicitly the vendor's BlueZ HCI driver (not the Android Bluedroid node).
+# BlueZ profiles and the MT6765 combo-chip HCI interface.
+# Actual vendor WLAN/BT firmware and external connectivity modules are still
+# separate dependencies; enabling Kconfig alone does not supply those files.
 CONFIG_BT_RFCOMM=y
 CONFIG_BT_BNEP=y
 CONFIG_BT_HIDP=y
+CONFIG_MTK_COMBO=y
+CONFIG_MTK_COMBO_CHIP_CONSYS_6765=y
 CONFIG_MTK_COMBO_COMM=y
 CONFIG_MTK_COMBO_BT_HCI=y
+CONFIG_MTK_COMBO_WIFI=y
 
-# Keep the already-confirmed A04e legacy display and active Jadard path.
-# These are vendor-kernel drivers; they are not proof of a working DRM
-# compositor or of the physical LCD panel variant.
+# Keep the A04e legacy display and active Jadard path enabled.
+# These vendor drivers do not establish a working DRM/KMS compositor or
+# identify the physical LCD panel variant.
 CONFIG_MTK_LCM=y
 CONFIG_MTK_FB=y
+CONFIG_TOUCHSCREEN_MTK=y
 CONFIG_TOUCHSCREEN_JADARD_MODULE=y
 CONFIG_TOUCHSCREEN_JADARD_IC_JD9365T=y
 CONFIG_TOUCHSCREEN_JADARD_COMMON=y
 CONFIG_TOUCHSCREEN_JADARD_CHIPSET_M04=y
+
