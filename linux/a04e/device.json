@@ -122,5 +122,41 @@
       "touchscreen": "working in TWRP recovery",
       "scope": "Recovery functionality only; does not prove the postmarketOS kernel or userspace supports either device."
     }
+  },
+  "image_build_pipeline": {
+    "workflow": ".github/workflows/a04e-postmarketos-image.yml",
+    "outputs": [
+      "boot.img",
+      "super.img"
+    ],
+    "boot_image": {
+      "format": "Android boot header v2",
+      "page_size_bytes": 2048,
+      "target_partition": "boot",
+      "target_partition_size_bytes": 33554432
+    },
+    "super_image": {
+      "format": "Android dynamic-partition image",
+      "physical_partition": "/dev/block/mmcblk0p44",
+      "physical_partition_size_bytes": 6786383872,
+      "metadata_size_bytes": 65536,
+      "metadata_slots": 2,
+      "logical_partition": "pmos_root",
+      "filesystem": "ext4",
+      "root_device": "/dev/mapper/pmos_root"
+    },
+    "validation": [
+      "boot image header, kernel, initramfs, DTB, command line and partition-size checks",
+      "lpdump metadata parse",
+      "lpunpack round-trip and byte comparison",
+      "read-only ext4 filesystem check"
+    ],
+    "limitations": [
+      "CI structural validation does not prove the phone boots",
+      "super.img replaces Android logical partitions system, odm, product, system_ext and vendor",
+      "userdata and GPT are not included in the super image",
+      "no verified on-device display compositor or touch runtime yet",
+      "no verified flashing compatibility or vbmeta handling"
+    ]
   }
 }
