@@ -103,21 +103,13 @@ jobs:
           grep -Fqx 'CONFIG_MTK_CHARGER=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
           grep -Fqx 'CONFIG_MTK_COMBO_WIFI=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
           test -s "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
-          grep -Fq 'WLAN_CHIP_ID=6765' "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
-          grep -Fq 'btmtk_uart_unify.ko' "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
-          BT_MODULE="$RUNNER_TEMP/a04e-prebuilt-kernel/btmtk_uart_unify.ko"
-          BT_CHECKSUM="$RUNNER_TEMP/a04e-prebuilt-kernel/BT-MODULE-SHA256-SUM.txt"
-          test -s "$BT_MODULE" && test -s "$BT_CHECKSUM"
-          expected_bt="$(awk 'NR == 1 {print $1}' "$BT_CHECKSUM")"
-          actual_bt="$(sha256sum "$BT_MODULE" | awk '{print $1}')"
-          test "$expected_bt" = "$actual_bt" || {
-            echo "Bluetooth module checksum mismatch" >&2
-            exit 1
-          }
+          grep -Fq 'MT6765 / CONSYS_6765 / MT6631 / CONNAC' "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
+          grep -Fq 'Gen4M built-in' "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
+          grep -Fq 'WMT/BTIF transport built-in' "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
+          grep -Fq 'GPS:' "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
+          grep -Fq 'FM:' "$RUNNER_TEMP/a04e-prebuilt-kernel/connectivity-build-info.txt"
           install -Dm644 "$KERNEL" \
             "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/linux-samsung-a04e/Image.gz"
-          install -Dm644 "$BT_MODULE" \
-            "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/linux-samsung-a04e/btmtk_uart_unify.ko"
 
       - name: Prepare pmbootstrap and pmaports overlay
         shell: bash
