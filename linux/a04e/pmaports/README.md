@@ -7,14 +7,15 @@ SM-A042F (a04e, MediaTek MT6765 / HS04).
 
 - Architecture: aarch64
 - Distribution: postmarketOS edge (Alpine)
-- Current CI target: minimal diagnostic rootfs/boot-image packaging (UI disabled)
+- Current CI target: experimental Phosh rootfs/boot-image packaging (Phoc display output not yet validated)
 - Kernel: reuse the verified Samsung 4.19.191 Image.gz artifact from workflow run
   41811886477; rebuild the device-tree outputs from the pinned source.
 - Kernel source commit: 7c1b304f2df8df4c85abe6fe84b8238d7521bd58.
 
-The workflow `.github/workflows/a04e-postmarketos-image.yml` attempts a real
-pmbootstrap package/rootfs/boot-image build. A successful artifact is only a
-bring-up candidate. It is not a finished graphical phone OS and is not approved
+The workflow `.github/workflows/a04e-postmarketos-image.yml` selects
+`ui=phosh` and includes ModemManager, NetworkManager and iio-sensor-proxy
+with OpenRC service packages. It attempts a real pmbootstrap package/rootfs/
+boot-image build. A successful artifact is only a bring-up candidate. It is not a finished graphical phone OS and is not approved
 for flashing until all gates below pass.
 
 ## Display and touchscreen evidence
@@ -65,7 +66,8 @@ preserved or replaced with a verified durable artifact before then.
 3. Verify that the framebuffer remains active after initramfs/userspace starts.
 4. Verify Jadard SPI interrupts, reset, coordinate mapping and real touch events.
 5. Validate storage, USB, Wi-Fi, audio, battery/charging and suspend/resume.
-6. Port or validate DRM/KMS before enabling Phosh.
+6. Port or validate DRM/KMS (or another Phoc-supported backend) and prove
+   Phoc can render before treating the integrated Phosh session as usable.
 7. Verify the exact Samsung PIT/Download Mode flashing and stock restore route.
 
 A green metadata check or successful image packaging job does not prove any of
