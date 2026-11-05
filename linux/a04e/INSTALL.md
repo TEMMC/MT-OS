@@ -2,7 +2,7 @@
 
 Target: Samsung Galaxy A04e SM-A042F, MT6765 / HS04, ARM64.
 
-<badge color="warning">Not verified for flashing</badge>
+**NOT VERIFIED FOR FLASHING**
 
 The current work is a native Linux bring-up. There is no verified Linux boot on this handset and the device manifest deliberately remains `flashable: false`.
 
