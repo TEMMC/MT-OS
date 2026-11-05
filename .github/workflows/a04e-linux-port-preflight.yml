@@ -49,16 +49,16 @@ jobs:
           assert pins["downstream"]["kernel_version"] == "4.19.191"
           assert pins["downstream"]["defconfig"] == "a04e_defconfig"
           connectivity = pins["connectivity_modules"]
-          assert connectivity["commit"] == "9c4222a3d884e57cf82dda1668f356559e8c8444"
+          assert connectivity["commit"] == "3d48d43caa96b6f9be8a06199ee6eb2241d79153"
           assert connectivity["wlan_chip_id"] == 6765
-          assert connectivity["combo_chip"] == "CONNAC"
+          assert connectivity["combo_chip"] == "CONSYS_6765"
+          assert connectivity["build_mode"] == "CONFIG_DRV_BUILD_IN=y"
+          assert connectivity["bt_platform"] == "connac1x"
           assert tools["kernel_source"]["commit"] == commit
           assert tools["compiler"]["name"] == "clang-r383902"
           assert tools["cross_toolchain"]["name"] == "arm-gnu-toolchain-14.2.rel1"
           assert "SKIP  Image.gz" in kernel_apkbuild  # The image workflow validates the matching kernel artifact SHA-256 before staging it.
           assert "coreutils" in kernel_apkbuild
-          assert "btmtk_uart_unify.ko" in kernel_apkbuild
-          assert "SKIP  btmtk_uart_unify.ko" in kernel_apkbuild
           print("A04e hardware and source pins are internally consistent.")
           PY
 
@@ -83,6 +83,11 @@ jobs:
               "Clang pin recorded in toolchain manifest": toolchain["compiler"]["name"] == "clang-r383902",
               "device package depends on kernel": "linux-samsung-a04e" in device,
               "devtmpfs enabled for initramfs": "CONFIG_DEVTMPFS=y" in fragment,
+              "MT6765 combo Bluetooth WMT enabled": "CONFIG_MTK_COMBO_BT=y" in fragment,
+              "MT6765 Gen4M Wi-Fi enabled": "CONFIG_MTK_COMBO_WIFI=y" in fragment,
+              "MT6765 GPS enabled": "CONFIG_MTK_COMBO_GPS=y" in fragment and "CONFIG_MTK_GPS_SUPPORT=y" in fragment,
+              "MT6765 FM enabled": "CONFIG_MTK_FMRADIO=y" in fragment,
+              "BTIF transport enabled": "CONFIG_MTK_BTIF=y" in fragment,
               "DRM/KMS remains explicitly unclaimed": 'deviceinfo_drm="false"' in deviceinfo,
           }
           for name, ok in checks.items():
