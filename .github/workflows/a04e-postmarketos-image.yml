@@ -36,13 +36,49 @@ jobs:
             build-essential ca-certificates curl e2fsprogs jq rsync \
             xz-utils zip unzip
 
-      # Reuse the already successful kernel build. This artifact contains
-      # Image.gz, kernel.config and checksums; DTBs are built separately below.
-      - name: Download previously built A04e kernel
+      # Wait for the kernel workflow triggered by this exact source commit.
+      # This prevents packaging an older kernel artifact after a device/config change.
+      - name: Wait for matching A04e kernel build
+        id: kernel
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          API="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/406710969/runs"
+          RUN_ID=""
+          for attempt in $(seq 1 240); do
+            response="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$API?branch=$GITHUB_REF_NAME&head_sha=$GITHUB_SHA&per_page=20")"
+            matching="$(jq -c --arg sha "$GITHUB_SHA" \
+              '[.workflow_runs[] | select(.head_sha == $sha)] | first // empty' <<< "$response")"
+            if [ -n "$matching" ]; then
+              status="$(jq -r '.status' <<< "$matching")"
+              conclusion="$(jq -r '.conclusion // empty' <<< "$matching")"
+              RUN_ID="$(jq -r '.id' <<< "$matching")"
+              if [ "$status" = "completed" ]; then
+                if [ "$conclusion" != "success" ]; then
+                  echo "Matching kernel workflow $RUN_ID ended with: $conclusion" >&2
+                  exit 1
+                fi
+                break
+              fi
+            fi
+            echo "Waiting for A04e kernel workflow for $GITHUB_SHA (attempt $attempt/240)"
+            sleep 30
+          done
+          test -n "$RUN_ID" || { echo "Timed out waiting for matching kernel build" >&2; exit 1; }
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      # Reuse the exact successful kernel built for this commit; do not compile
+      # Image.gz again in the postmarketOS packaging job.
+      - name: Download matching A04e kernel artifact
         uses: actions/download-artifact@v4
         with:
           name: a04e-kernel-build-diagnostics
-          run-id: 41811886477
+          run-id: ${{ steps.kernel.outputs.run_id }}
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/a04e-prebuilt-kernel
 
@@ -51,8 +87,20 @@ jobs:
         run: |
           set -euo pipefail
           KERNEL="$RUNNER_TEMP/a04e-prebuilt-kernel/Image.gz"
+          CHECKSUM="$RUNNER_TEMP/a04e-prebuilt-kernel/KERNEL-SHA256-SUM.txt"
           test -s "$KERNEL"
-          echo "c0327e1a7bb6aac89188581e05d3fbe4db9543f15a9d5498bfb5b27b4b62bd3c  $KERNEL" | sha256sum --check -
+          test -s "$CHECKSUM"
+          expected="$(awk 'NR == 1 {print $1}' "$CHECKSUM")"
+          actual="$(sha256sum "$KERNEL" | awk '{print $1}')"
+          test "$expected" = "$actual" || {
+            echo "Kernel artifact checksum mismatch: expected $expected, got $actual" >&2
+            exit 1
+          }
+          test -s "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
+          grep -Fqx 'CONFIG_DEVTMPFS=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
+          grep -Fqx 'CONFIG_POWER_SUPPLY=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
+          grep -Fqx 'CONFIG_MTK_CHARGER=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
+          grep -Fqx 'CONFIG_MTK_COMBO_WIFI=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
           install -Dm644 "$KERNEL" \
             "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/linux-samsung-a04e/Image.gz"
 
@@ -166,7 +214,7 @@ jobs:
           Target: Samsung Galaxy A04e SM-A042F
           Distribution: postmarketOS edge
           Device package: device-samsung-a04e
-          Kernel: reused Linux 4.19.191 Image.gz from workflow run 41811886477
+          Kernel: reused Linux 4.19.191 Image.gz from matching successful kernel workflow run ${{ steps.kernel.outputs.run_id }}
           DTBs: rebuilt from the pinned A04e kernel source; not a full kernel rebuild
           Display/touch kernel support: legacy MediaTek mtkfb/LCM and Jadard JD9365T are enabled in the pinned kernel; actual panel variant and Linux userspace presentation remain unverified
           Flashing: NOT VALIDATED; do not flash this artifact. Use only for offline inspection and controlled diagnostic boot planning
