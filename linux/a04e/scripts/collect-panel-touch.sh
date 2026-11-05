@@ -19,9 +19,25 @@ REPORT="$OUT/panel-touch-report.txt"
   done
   echo
   echo "== Runtime panel identifiers =="
-  for f in /proc/lcm /proc/devinfo/lcm /proc/devinfo/lcd /sys/class/graphics/fb0/name \
-           /sys/class/graphics/fb0/modes /sys/class/graphics/fb0/virtual_size; do
-    if [ -r "$f" ]; then echo "--- $f"; cat "$f" 2>/dev/null; fi
+  for f in /proc/lcm /proc/devinfo/lcm /proc/devinfo/lcd \
+           /sys/firmware/devicetree/base/atag,videolfb-lcmname \
+           /proc/device-tree/atag,videolfb-lcmname \
+           /sys/class/graphics/fb0/name /sys/class/graphics/fb0/modes \
+           /sys/class/graphics/fb0/virtual_size /sys/class/graphics/fb0/device/uevent; do
+    if [ -r "$f" ]; then echo "--- $f"; tr '\\000' ' ' < "$f" 2>/dev/null; echo; fi
+  done
+  echo
+  echo "== SPI touchscreen binding =="
+  for d in /sys/bus/spi/devices/*; do
+    [ -e "$d" ] || continue
+    case "$d" in *spi1.1*|*spi1.0*|*spi1.2*) ;;
+      *) continue ;;
+    esac
+    echo "--- $d"
+    for f in "$d/modalias" "$d/uevent" "$d/of_node/compatible" "$d/of_node/status"; do
+      [ -r "$f" ] && { echo "[$f]"; tr '\\000' ' ' < "$f" 2>/dev/null; echo; }
+    done
+    [ -L "$d/driver" ] && echo "driver=$(readlink "$d/driver")"
   done
   echo
   echo "== Panel/touch-related device tree strings =="
@@ -39,13 +55,18 @@ REPORT="$OUT/panel-touch-report.txt"
   echo
   echo "== Input device details =="
   cat /proc/bus/input/devices 2>/dev/null
-  for f in /sys/class/input/input*/name /sys/class/input/input*/device/modalias \
-           /sys/class/input/input*/device/uevent; do
-    [ -r "$f" ] && { echo "--- $f"; cat "$f" 2>/dev/null; }
+  for f in /sys/class/input/input*/name /sys/class/input/input*/phys \
+           /sys/class/input/input*/device/modalias /sys/class/input/input*/device/uevent \
+           /sys/class/input/input*/device/of_node/compatible; do
+    [ -r "$f" ] && { echo "--- $f"; tr '\\000' ' ' < "$f" 2>/dev/null; echo; }
+  done
+  for d in /sys/class/input/input*; do
+    [ -e "$d" ] || continue
+    [ -L "$d/device/driver" ] && echo "$d driver=$(readlink "$d/device/driver")"
   done
   echo
   echo "== Relevant kernel log lines =="
-  dmesg 2>/dev/null | grep -iE 'lcm|lcd|panel|dsi|backlight|jadard|jd9365|chipone|tddi|gcore|touchscreen|touch panel' | tail -n 400
+  dmesg 2>/dev/null | grep -iE 'lcm|lcd|panel|dsi|ddp|mtkfb|framebuffer|backlight|jadard|jd9365|chipone|tddi|gcore|touchscreen|touch panel|spi1' | tail -n 800
 } > "$REPORT" 2>&1
 
 echo "Report created: $REPORT"
