@@ -44,8 +44,12 @@ records archive hashes for review.
 
 - Device target: Samsung Galaxy A04e SM-A042F, MT6765, HS04.
 - Device-specific DTS identifies Samsung A04e EUR OPEN 00 and the HS04 board.
-- Runtime reports identify the Jadard touchscreen path; the exact physical
-  panel and populated touch-controller variant still require native testing.
+- Runtime reports identify Jadard on SPI1.1 (`jadard,jdcommon`, driver `jadard_tp`).
+- TWRP 3.7.1-12-citty2029 has working display and touchscreen, proving the
+  recovery environment can operate both devices; this is not native Linux validation.
+- Live bootloader properties report `nt35695B_fhd_dsi_cmd_auo_rt5081_drv`,
+  `lcmfound=1`, and `lcm_inited=0`. The active framebuffer mode is 720x1600;
+  the exact Linux panel timings/init sequence still need source correlation.
 - HS04 charger DTS includes SGM41513 and UPM6910 candidates; both corresponding
   kernel drivers are preserved/enabled. The actual fitted IC must be verified.
 - The vendor kernel uses legacy MTK framebuffer/LCM, not a verified DRM/KMS
@@ -89,8 +93,9 @@ Detailed display/touch source analysis remains in
   NetworkManager and iio-sensor-proxy OpenRC services.
 - Diagnostic image: an earlier image artifact exists but used the previous
   kernel/configuration; it is not accepted as the current image.
-- Exact physical panel: unresolved.
-- Native touchscreen, charging and display: not yet boot-tested.
+- Bootloader-reported panel identifier: `nt35695B_fhd_dsi_cmd_auo_rt5081_drv` (`lcmfound=1`, `lcm_inited=0`); Linux panel timings/init sequence remain unresolved.
+- TWRP 3.7.1-12-citty2029 display and touch work in recovery; native Linux touchscreen and display remain untested.
+- Native Linux charging: not yet tested.
 - Wi-Fi: vendor Gen4M driver source is included in the current build; stock
   firmware extraction and on-device scan/association tests remain.
 - Bluetooth: WMT/BTIF low-level transport is included; a working BlueZ HCI
