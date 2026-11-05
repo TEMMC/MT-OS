@@ -35,6 +35,7 @@ jobs:
           set -euo pipefail
           COMMIT="7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
           KSU_COMMIT="56c55b692a00d90c0568a57ef5a8ed0daa23bb9a"
+          CONNECTIVITY_COMMIT="9c4222a3d884e57cf82dda1668f356559e8c8444"
           mkdir -p "$RUNNER_TEMP/a04e-src" "$RUNNER_TEMP/a04e-toolchains"
           curl --fail --location --retry 5 --retry-all-errors \
             "https://github.com/ravindu644/android_kernel_a042f/archive/$COMMIT.tar.gz" \
@@ -48,6 +49,9 @@ jobs:
           curl --fail --location --retry 5 --retry-all-errors \
             "https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" \
             -o "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://github.com/AbzRaider/vendor-mediatek-kernel_modules-connectivity_4.19/archive/$CONNECTIVITY_COMMIT.tar.gz" \
+            -o "$RUNNER_TEMP/a04e-src/connectivity-4.19.tar.gz"
           (
             cd "$RUNNER_TEMP/a04e-toolchains"
             sha256sum *.tar.* | tee SHA256SUMS.txt
@@ -55,9 +59,14 @@ jobs:
           )
           tar -xf "$RUNNER_TEMP/a04e-src/kernel.tar.gz" -C "$RUNNER_TEMP/a04e-src"
           SRC="$RUNNER_TEMP/a04e-src/android_kernel_a042f-$COMMIT"
-          mkdir -p "$SRC/KernelSU-Next"
+          CONNECTIVITY="$RUNNER_TEMP/a04e-src/vendor/mediatek/kernel_modules/connectivity"
+          mkdir -p "$SRC/KernelSU-Next" "$CONNECTIVITY"
           tar -xzf "$RUNNER_TEMP/a04e-src/kernelsu-next.tar.gz" --strip-components=1 -C "$SRC/KernelSU-Next"
+          tar -xzf "$RUNNER_TEMP/a04e-src/connectivity-4.19.tar.gz" --strip-components=1 -C "$CONNECTIVITY"
           test -f "$SRC/drivers/kernelsu/Kconfig"
+          test -f "$CONNECTIVITY/common/common_main/platform/mt6765.c"
+          test -f "$CONNECTIVITY/wlan/adaptor/Makefile"
+          test -f "$CONNECTIVITY/wlan/core/gen4m/Makefile"
           tar -xf "$RUNNER_TEMP/a04e-toolchains/clang-r383902.tar.gz" -C "$RUNNER_TEMP/a04e-toolchains"
           tar -xf "$RUNNER_TEMP/a04e-toolchains/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" -C "$RUNNER_TEMP/a04e-toolchains"
           test -f "$SRC/Makefile"
@@ -67,6 +76,8 @@ jobs:
           test -x "$CROSS_GCC"
           {
             echo "A04E_SRC=$SRC"
+            echo "A04E_CONNECTIVITY_SRC=$CONNECTIVITY"
+            echo "A04E_CONNECTIVITY_COMMIT=$CONNECTIVITY_COMMIT"
             echo "A04E_CLANG=$CLANG"
             echo "A04E_CROSS_COMPILE=${CROSS_GCC%gcc}"
           } >> "$GITHUB_ENV"
@@ -93,11 +104,23 @@ jobs:
           set -euo pipefail
           export ARCH=arm64
           export ANDROID_MAJOR_VERSION=r
+          # The A04e uses MediaTek CONSYS_6765 / Gen4M connectivity. The
+          # downstream Makefile consumes this build variable (not Kconfig)
+          # to link the matching vendor WLAN/WMT sources into the kernel.
+          export CONFIG_WLAN_DRV_BUILD_IN=y
+          export CONFIG_MTK_COMBO_WIFI_HIF=axi
+          export MTK_COMBO_CHIP=CONNAC
+          export WLAN_CHIP_ID=6765
+          export MTK_ANDROID_WMT=y
           make -C "$A04E_SRC" O=out ARCH=arm64 CC="$A04E_CLANG" \
             CROSS_COMPILE="$A04E_CROSS_COMPILE" \
             CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
             CONFIG_SECTION_MISMATCH_WARN_ONLY=y \
             KBUILD_BUILD_VERSION=1-postmarketOS -j2
+          # Fail if the built-in Gen4M source tree was not actually compiled.
+          test -d "$A04E_SRC/out/drivers/misc/mediatek/connectivity"
+          find "$A04E_SRC/out/drivers/misc/mediatek/connectivity" -path '*/wlan_drv_gen4m/*.o' -print -quit | grep -q .
+          find "$A04E_SRC/out/drivers/misc/mediatek/connectivity" -path '*/wmt_chrdev_wifi/*.o' -print -quit | grep -q .
           test -s "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           file "$A04E_SRC/out/arch/arm64/boot/Image.gz"
           sha256sum "$A04E_SRC/out/arch/arm64/boot/Image.gz" \
@@ -108,6 +131,14 @@ jobs:
           cp "$RUNNER_TEMP/a04e-toolchains/SHA256SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/SHA512SUMS.txt" "$RUNNER_TEMP/a04e-output/"
           cp "$RUNNER_TEMP/a04e-toolchains/KERNEL-SHA256-SUM.txt" "$RUNNER_TEMP/a04e-output/"
+          cat > "$RUNNER_TEMP/a04e-output/connectivity-build-info.txt" <<INFO
+          Connectivity source: AbzRaider/vendor-mediatek-kernel_modules-connectivity_4.19
+          Connectivity commit: $A04E_CONNECTIVITY_COMMIT
+          MT6765 Gen4M Wi-Fi: built-in via CONFIG_WLAN_DRV_BUILD_IN=y, HIF=axi, WLAN_CHIP_ID=6765
+          WMT common source: included from the pinned 4.19 connectivity source tree
+          Required proprietary firmware: not bundled; extract from matching stock SM-A042F vendor firmware
+          Bluetooth HCI transport: not included in this WLAN build step; separately pending
+          INFO
 
       - name: Upload kernel build diagnostics and reusable kernel
         uses: actions/upload-artifact@v4
