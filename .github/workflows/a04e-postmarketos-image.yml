@@ -42,7 +42,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: a04e-kernel-build-diagnostics
-          run-id: 41817119710
+          run-id: 41811886477
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/a04e-prebuilt-kernel
 
@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           KERNEL="$RUNNER_TEMP/a04e-prebuilt-kernel/Image.gz"
           test -s "$KERNEL"
-          echo "56b79a1f33c9d1e60a48847dad995fe4a7ee0164b9af473b7a898034b1165753  $KERNEL" | sha256sum --check -
+          echo "c0327e1a7bb6aac89188581e05d3fbe4db9543f15a9d5498bfb5b27b4b62bd3c  $KERNEL" | sha256sum --check -
           install -Dm644 "$KERNEL" \
             "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/linux-samsung-a04e/Image.gz"
 
@@ -166,7 +166,7 @@ jobs:
           Target: Samsung Galaxy A04e SM-A042F
           Distribution: postmarketOS edge
           Device package: device-samsung-a04e
-          Kernel: reused Linux 4.19.191 Image.gz from workflow run 41817119710
+          Kernel: reused Linux 4.19.191 Image.gz from workflow run 41811886477
           DTBs: rebuilt from the pinned A04e kernel source; not a full kernel rebuild
           Interface: none (diagnostic bring-up image; DRM/KMS and touch are not ready)
           Flashing: disabled in deviceinfo; do not flash this artifact
