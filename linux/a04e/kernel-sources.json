@@ -23,7 +23,18 @@
       "No boot image or partition layout assumptions are made.",
       "The additional a04e_00_defconfig exists but is not selected."
     ],
-    "additional_defconfig": "a04e_00_defconfig"
+    "additional_defconfig": "a04e_00_defconfig",
+    "prebuilt_kernel_artifact": {
+      "repository": "TEMMC/MT-OS",
+      "workflow_run_id": 41811886477,
+      "artifact_id": 13314450022,
+      "artifact_name": "a04e-kernel-build-diagnostics",
+      "image": "Image.gz",
+      "sha256": "c0327e1a7bb6aac89188581e05d3fbe4db9543f15a9d5498bfb5b27b4b62bd3c",
+      "sha512": "3781c2b7d2a62372c56334dacfba191b78e2632baa61430454ede4410cdf183e5acd26ebb7d8c01b158e5845a2b72a9728f07472c9e2b88637432a1df00a1f48",
+      "artifact_expires_at": "2026-11-18T10:25:53Z",
+      "note": "Exact successful kernel build output; package build must fetch and verify this artifact, not compile Image.gz again."
+    }
   },
   "mainline": {
     "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
