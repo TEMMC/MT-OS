@@ -53,5 +53,21 @@
     "flashable": false,
     "allow_partition_writes": false,
     "device_report_generated": "2026-11-03T13:15:57"
+  },
+  "connectivity_modules": {
+    "repository": "https://github.com/AbzRaider/vendor-mediatek-kernel_modules-connectivity_4.19.git",
+    "ref": "lyriq_4.19",
+    "commit": "9c4222a3d884e57cf82dda1668f356559e8c8444",
+    "purpose": "MT6765/CONNAC Gen4M WLAN source and shared WMT connectivity source",
+    "build_mode": "WLAN_DRV_BUILD_IN=y",
+    "wlan_chip_id": 6765,
+    "combo_chip": "CONNAC",
+    "hif": "axi",
+    "status": "source-pinned; compile validation pending",
+    "notes": [
+      "The pinned 4.19 connectivity tree contains common/common_main/platform/mt6765.c and the Gen4M WLAN core/adaptor paths expected by the downstream kernel Makefile.",
+      "The Samsung handset firmware blobs are not redistributed; firmware extraction from the user's matching stock vendor image is still required.",
+      "Bluetooth HCI transport is not yet included in this WLAN build step and remains separately validated."
+    ]
   }
 }
