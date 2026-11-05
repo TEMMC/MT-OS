@@ -17,13 +17,11 @@ deviceinfo_root_filesystem="ext4"
 # The Linux root will be a logical partition named pmos_root inside super.
 deviceinfo_super_partitions="/dev/block/mmcblk0p44"
 
-# Stock boot partition is an Android boot image (header v2, 2048-byte pages).
-# Samsung Odin/Heimdall boot-image mode matches this boot-image format.
-# Heimdall compatibility and the full restore path must be validated before
-# any partition is flashed; this setting only enables correct image packaging.
-deviceinfo_flash_method="heimdall-bootimg"
-deviceinfo_flash_heimdall_partition_kernel="BOOT"
-deviceinfo_flash_heimdall_partition_rootfs="USERDATA"
+# The boot image is built as a standalone Android header-v2 boot.img.
+# Flashing is intentionally not delegated to pmbootstrap: the intended layout
+# is boot.img in BOOT and a separate pmos_root logical partition inside super.
+# TWRP/PIT compatibility and the super metadata still require validation.
+deviceinfo_flash_method="none"
 deviceinfo_generate_bootimg="true"
 deviceinfo_header_version="2"
 deviceinfo_flash_pagesize="2048"
