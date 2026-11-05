@@ -24,8 +24,9 @@ deviceinfo_flash_offset_ramdisk="0x11a88000"
 deviceinfo_flash_offset_tags="0x07808000"
 deviceinfo_flash_offset_dtb="0x07808000"
 
-# The vendor board DTS produces the MT6765 base DTB. Keep it as the
-# dedicated Android boot-image DTB component, not appended to Image.gz.
+# Use the merged MT6765 + A04e/HS04 device tree. The kernel APKBUILD applies
+# the Samsung /plugin/ overlay so the board's panel and Jadard SPI nodes exist
+# in the final boot-image DTB.
 deviceinfo_dtb="mediatek/mt6765_a04e_eur_open_00"
 deviceinfo_append_dtb="false"
 deviceinfo_bootimg_qcdt="false"
