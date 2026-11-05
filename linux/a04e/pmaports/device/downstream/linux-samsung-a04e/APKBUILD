@@ -1,7 +1,7 @@
 # Reference: https://postmarketos.org/vendorkernel
 # The compressed Image.gz is reused from the verified CI kernel build.
-# Only the MT6765 base DTB and the complete A04e board DTB are generated here.
-# The A04e board DTS is a complete DTB, not a DTBO overlay.
+# The A04e board DTS is a plugin overlay. Merge it into the MT6765 base DTB
+# so the boot image carries the board-specific display, GPIO and SPI touch nodes.
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191
@@ -123,7 +123,15 @@ build() {
 
 	[ -s "$srcdir/Image.gz" ] || die "Verified prebuilt Image.gz is missing"
 	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765.dtb" ] || die "MT6765 base DTB missing"
-	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb" ] || die "A04e board DTB missing"
+	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb" ] || die "A04e device-tree overlay missing"
+
+	# Samsung marks the A04e DTS with /plugin/. It must be applied to the MT6765
+	# base tree; placing the overlay blob in boot.img as if it were a full DTB
+	# would leave the HS04 panel and Jadard SPI touchscreen nodes unapplied.
+	fdtoverlay -i "$_outdir/arch/arm64/boot/dts/mediatek/mt6765.dtb" \
+		-o "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00-merged.dtb" \
+		"$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb"
+	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00-merged.dtb" ] || die "Merged A04e device tree missing"
 }
 
 package() {
@@ -140,8 +148,10 @@ package() {
 	local dtb_dir="$_outdir/arch/arm64/boot/dts/mediatek"
 	install -Dm644 "$dtb_dir/mt6765.dtb" \
 		"$pkgdir/boot/dtbs/mediatek/mt6765.dtb"
-	install -Dm644 "$dtb_dir/mt6765_a04e_eur_open_00.dtb" \
+	install -Dm644 "$dtb_dir/mt6765_a04e_eur_open_00-merged.dtb" \
 		"$pkgdir/boot/dtbs/mediatek/mt6765_a04e_eur_open_00.dtb"
+	install -Dm644 "$dtb_dir/mt6765_a04e_eur_open_00.dtb" \
+		"$pkgdir/boot/dtbs/mediatek/mt6765_a04e_eur_open_00.dtbo"
 }
 
 sha512sums="
