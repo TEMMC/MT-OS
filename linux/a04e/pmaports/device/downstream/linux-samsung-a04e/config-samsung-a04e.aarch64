@@ -13,6 +13,10 @@ CONFIG_TMPFS=y
 CONFIG_EXT4_FS=y
 CONFIG_F2FS_FS=y
 
+# MediaTek battery percentage/charge algorithm; the stock defconfig already
+# enables the matching legacy MT6397 PMIC MFD core.
+CONFIG_MTK_BATTERY=y
+
 # BlueZ profiles and the MediaTek CONSYS_6765 HCI path.
 # MTK_COMBO_COMM is the shared connectivity layer; MTK_COMBO_BT_HCI is
 # explicitly the vendor's BlueZ HCI driver (not the Android Bluedroid node).
