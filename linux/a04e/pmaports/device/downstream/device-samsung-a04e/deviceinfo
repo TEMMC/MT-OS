@@ -11,10 +11,12 @@ deviceinfo_external_storage="true"
 deviceinfo_screen_width="720"
 deviceinfo_screen_height="1600"
 
-# Read-only inspected stock boot image: Android header v2, 2048-byte pages.
-# A04F TeamWin BoardConfig confirms base, ramdisk and tags addresses.
-# These values enable image generation only; they do NOT authorize flashing.
-deviceinfo_flash_method="none"
+# Stock boot partition is an Android boot image (header v2, 2048-byte pages).
+# Samsung Odin/Heimdall boot-image mode matches this boot-image format.
+# Heimdall compatibility and the full restore path must be validated before
+# any partition is flashed; this setting only enables correct image packaging.
+deviceinfo_flash_method="heimdall-bootimg"
+deviceinfo_flash_heimdall_partition_kernel="BOOT"
 deviceinfo_generate_bootimg="true"
 deviceinfo_header_version="2"
 deviceinfo_flash_pagesize="2048"
@@ -32,5 +34,6 @@ deviceinfo_append_dtb="false"
 deviceinfo_bootimg_qcdt="false"
 deviceinfo_bootimg_dtb_second="false"
 
-# No usable DRM/KMS driver has been established yet.
+# Legacy MTK framebuffer/LCM is present, but MT6765 DRM/KMS is not ported.
+# Keep this false until a DRM/KMS driver and working compositor are verified.
 deviceinfo_drm="false"
