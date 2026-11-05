@@ -27,10 +27,25 @@ The read-only inventory recorded these nodes on the handset:
 | recovery | `/dev/block/mmcblk0p38` |
 | dtbo | `/dev/block/mmcblk0p12` |
 | vbmeta | `/dev/block/mmcblk0p13` |
+| vbmeta_system | `/dev/block/mmcblk0p39` |
+| vbmeta_vendor | `/dev/block/mmcblk0p40` |
 | super | `/dev/block/mmcblk0p44` |
 | userdata | `/dev/block/mmcblk0p50` |
 
-These Android block-node observations do not establish Samsung PIT labels, exact capacities, bootloader acceptance rules or a safe restoration procedure. Never write raw partitions using these paths.
+These Android block-node observations are useful for identifying the partitions from recovery, but do not establish Samsung PIT labels, exact capacities, bootloader acceptance rules or a safe restoration procedure. Never write raw partitions using these paths.
+
+## TWRP recovery evidence
+
+The handset has booted TWRP `3.7.1-12-citty2029`; its display and touchscreen
+work in recovery. This gives us a known recovery environment for read-only
+inspection and restoration planning. It does not prove that a postmarketOS
+kernel can drive the display or touchscreen.
+
+The bootloader-provided live device-tree properties report
+`nt35695B_fhd_dsi_cmd_auo_rt5081_drv`, with `atag,videolfb-islcmfound=1` and
+`atag,videolfb-islcm_inited=0`. The current framebuffer mode is 720x1600.
+Use that panel identifier to locate the vendor initialization source; do not
+infer panel timing or resolution from its name.
 
 ## Current kernel and hardware configuration
 
