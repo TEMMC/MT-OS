@@ -126,7 +126,14 @@ build() {
 		CONFIG_TOUCHSCREEN_JADARD_MODULE=y \
 		CONFIG_TOUCHSCREEN_JADARD_IC_JD9365T=y \
 		CONFIG_TOUCHSCREEN_JADARD_COMMON=y \
-		CONFIG_TOUCHSCREEN_JADARD_CHIPSET_M04=y; do
+		CONFIG_TOUCHSCREEN_JADARD_CHIPSET_M04=y \
+		CONFIG_DEVTMPFS=y \
+		CONFIG_DEVTMPFS_MOUNT=y \
+		CONFIG_BT_RFCOMM=y \
+		CONFIG_BT_BNEP=y \
+		CONFIG_BT_HIDP=y \
+		CONFIG_MTK_COMBO_COMM=y \
+		CONFIG_MTK_COMBO_BT_HCI=y; do
 		grep -Fqx "$required" "$_outdir/.config" || die "Required A04e display/touch config missing: $required"
 	done
 	grep -Fq 'lcd_jd9365t_txd_ctc_mipi_hdp_video' "$_outdir/.config" || die "A04e panel candidate list missing JD9365T CTC"
