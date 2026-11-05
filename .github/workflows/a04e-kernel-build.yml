@@ -117,6 +117,7 @@ jobs:
           # HIF=axi, WMT and BT_PLATFORM=connac1x from the selected Kconfig.
           export CONFIG_DRV_BUILD_IN=y
           export TARGET_BUILD_VARIANT=user
+          export TARGET_PRODUCT=a04e
           make -C "$A04E_SRC" O=out ARCH=arm64 CC="$A04E_CLANG" \
             CROSS_COMPILE="$A04E_CROSS_COMPILE" \
             CLANG_TRIPLE=aarch64-linux-gnu- KCFLAGS=-w \
