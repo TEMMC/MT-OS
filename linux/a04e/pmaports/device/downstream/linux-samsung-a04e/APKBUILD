@@ -5,7 +5,7 @@
 
 pkgname=linux-samsung-a04e
 pkgver=4.19.191
-pkgrel=4
+pkgrel=5
 pkgdesc="Samsung Galaxy A04e downstream kernel (prebuilt kernel bring-up)"
 arch="aarch64"
 _carch="arm64"
@@ -15,6 +15,7 @@ license="GPL-2.0-only"
 options="!strip !check !tracedeps pmb:cross-native"
 makedepends="
 	bash
+	coreutils
 	clang
 	lld
 	llvm
