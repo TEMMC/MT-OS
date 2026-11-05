@@ -17,7 +17,7 @@
   "flashable": false,
   "verified_linux_boot": false,
   "required_validation": [
-    "identify exact physical LCD panel variant and its vendor initialization sequence",
+    "correlate the bootloader-reported LCM identifier with the physical panel and verify its native Linux DSI timings and initialization sequence",
     "port or validate the MTK display pipeline for Linux userspace (legacy mtkfb is not DRM/KMS)",
     "validate Jadard driver and SPI resources under the packaged kernel/initramfs",
     "verify bootloader unlock and Samsung Download Mode recovery path",
@@ -74,8 +74,11 @@
       "framebuffer": "mtkfb",
       "mode": "720x1600",
       "panel_binding": "mediatek,lcm-panel",
-      "panel_variant": "not exposed by the supplied runtime report; do not select a JD9365T/GC7202/NL9911C sequence yet",
-      "drm_kms": "not established"
+      "panel_variant": "Bootloader reports nt35695B_fhd_dsi_cmd_auo_rt5081_drv and lcmfound=1; lcm_inited=0. TWRP display works. Treat this as the leading panel source identifier, but verify native Linux DSI timings and init sequence; active framebuffer mode is 720x1600.",
+      "drm_kms": "not established",
+      "bootloader_lcm_name": "nt35695B_fhd_dsi_cmd_auo_rt5081_drv",
+      "bootloader_lcm_found": 1,
+      "bootloader_lcm_inited": 0
     },
     "touchscreen_active": {
       "spi_device": "spi1.1",
@@ -101,7 +104,7 @@
           "hs04_hdplus1600_dsi_default_vdo"
         ],
         "userspace_display": "legacy MediaTek framebuffer; DRM/KMS not enabled",
-        "physical_panel_variant": "not yet identified from runtime panel-selection evidence"
+        "physical_panel_variant": "Bootloader-reported nt35695B_fhd_dsi_cmd_auo_rt5081_drv (found flag=1, initialized flag=0); native Linux panel timing/init sequence not validated"
       },
       "touchscreen": {
         "CONFIG_TOUCHSCREEN_JADARD_MODULE": "y",
@@ -111,6 +114,13 @@
         "runtime_controller": "jadard,jdcommon on spi1.1",
         "linux_boot_validation": "not yet performed"
       }
+    },
+    "recovery_environment": {
+      "recovery": "TWRP",
+      "version": "3.7.1-12-citty2029",
+      "display": "working in TWRP recovery",
+      "touchscreen": "working in TWRP recovery",
+      "scope": "Recovery functionality only; does not prove the postmarketOS kernel or userspace supports either device."
     }
   }
 }
