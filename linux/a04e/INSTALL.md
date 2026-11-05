@@ -54,6 +54,6 @@ The active Jadard identity is enough to target the correct controller family in 
 
 ## Build status
 
-The current preflight workflow validates manifests and package metadata. It is not a postmarketOS image build and a green result does not mean the phone boots. The existing successful kernel artifact is pinned by the kernel build record; the postmarketOS package must consume that exact artifact rather than silently compiling a different kernel.
+The current preflight workflow validates manifests and package metadata. It is not a postmarketOS image build and a green result does not mean the phone boots. The exact successful kernel artifact from run `41811886477` is pinned by SHA-256 and SHA-512. Fetch it into the kernel package source directory before packaging with `linux/a04e/scripts/fetch-a04e-kernel-artifact.sh <path-to-linux-samsung-a04e/Image.gz>` (requires authenticated GitHub CLI access). The script verifies both digests and does not compile a new kernel. **Important:** the current Actions artifact expires on 2026-11-18; preserve it as a durable release asset or rebuild the same pinned artifact before that date. The kernel APKBUILD only generates/merges DTBs and packages the verified `Image.gz`.
 
 Until an image build, boot-image inspection, diagnostic boot, display test, touch test, and stock recovery test all pass, this project remains research/bring-up and must not publish a user-flashable image.
