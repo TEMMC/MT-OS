@@ -12,6 +12,10 @@ on:
       - ".github/workflows/a04e-postmarketos-image.yml"
   workflow_dispatch:
 
+concurrency:
+  group: a04e-image-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   actions: read
