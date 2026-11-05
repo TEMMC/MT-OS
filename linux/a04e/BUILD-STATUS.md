@@ -6,98 +6,98 @@
 |---|---|
 | Build environment | GitHub Actions |
 | Build system | pmbootstrap / Alpine APKBUILD |
-| Package repository format | pmaports overlay |
 | Distribution target | postmarketOS edge |
 | Intended mobile interface | Phosh (blocked on DRM/KMS and input bring-up) |
-| Kernel strategy | downstream bring-up + separate mainline research |
+| Kernel strategy | downstream Linux 4.19.191 with a separate mainline research path |
 | Target architecture | aarch64 |
+| Port branch | `linux/a04e-postmarketos-port` |
 
-## Pinned and verified inputs
+## Pinned sources and toolchains
 
-The downstream candidate is recorded in `kernel-sources.json`:
+The downstream kernel is pinned in `kernel-sources.json`:
 - repository: `ravindu644/android_kernel_a042f`
-- branch: `a04e`
 - commit: `7c1b304f2df8df4c85abe6fe84b8238d7521bd58`
 - kernel version: `4.19.191`
-- device defconfig: `a04e_defconfig`
+- defconfig: `a04e_defconfig`
 
-The uploaded running `/proc/config.gz` decompresses to 159,317 bytes and
-has Git blob SHA-1
-`c63ca74d9e6e595d215d12b735facf888c1eb151`, exactly matching the pinned
-source's `a04e_defconfig`. This confirms the starting configuration, not
-postmarketOS bootability.
+The matching vendor connectivity source is pinned separately:
+- repository: `rsuntk-oss/mtk_connectivity_module`
+- ref: `staging-4.19`
+- commit: `3d48d43caa96b6f9be8a06199ee6eb2241d79153`
+- target: MT6765 / CONSYS_6765 / MT6631 / CONNAC
+- build mode: `CONFIG_DRV_BUILD_IN=y`
 
-The kernel source repository was archived on 2025-12-31. The kernel's
-`README_Kernel.txt` documents Clang r383902 and an AArch64 GNU cross
-compiler. The corresponding pinned ARM GNU 14.2 / Clang r383902 archives are
-recorded in `toolchains.json`. Their release page does not publish fixed
-checksums; the new CI records SHA-256 values for review.
+Its README explicitly lists MT6765/MT6768 and Linux 4.19.x support. Its
+Makefile selects Gen4M WLAN, HIF=axi, WLAN_CHIP_ID=6765, WMT/BTIF,
+connac1x Bluetooth WMT, GPS and FM. The kernel build stages this source into
+the kernel's in-tree connectivity directory and merges the vendor
+`DRV_BUILD_IN`/logging Kconfig options without discarding the original
+kernel connectivity symbols.
+
+The kernel source requires the KernelSU-Next git submodule at commit
+`56c55b692a00d90c0568a57ef5a8ed0daa23bb9a`; the source archive omits
+submodule contents, so CI fetches and stages that exact commit separately.
+Clang r383902 and AArch64 GNU 14.2 are pinned in `toolchains.json`; CI
+records archive hashes for review.
 
 ## Hardware source investigation
 
-- The device-specific DTS identifies `Samsung,A04e EUR OPEN 00` and includes
-  the Samsung HS04 board DTS.
-- The actual boot image was parsed: Android boot header v2, 2 KiB page size,
-  12,061,530-byte gzip kernel payload and 1,412,010-byte gzip ramdisk.
-- The actual DTBO was parsed: one 64,951-byte FDT overlay entry with matching
-  A04e and MT6765 compatible strings.
-- The pinned kernel source contains a required KernelSU-Next git submodule at commit `56c55b692a00d90c0568a57ef5a8ed0daa23bb9a`; GitHub source archives omit submodule contents, so the CI/package recipes now fetch and stage this exact gitlink separately.
-- The downstream defconfig enables the vendor MTK framebuffer/LCM stack, but
-  disables `CONFIG_DRM_MEDIATEK`, `CONFIG_MTK_LCM_DEVICE_TREE_SUPPORT` and
-  `CONFIG_DEVTMPFS`.
-- The HS04 source contains seven candidate 720x1600 panel drivers. The active
-  physical panel variant is not yet identified.
-- The HS04 touchscreen DTSI describes Chipone, Jadard and GalaxyCore SPI
-  candidates. Runtime reports show `jadard-touchscreen`, but the exact
-  populated controller and compatible binding still need confirmation.
-- The inspected current upstream MediaTek DRM driver match table does not
-  contain MT6765 MMSYS support.
+- Device target: Samsung Galaxy A04e SM-A042F, MT6765, HS04.
+- Device-specific DTS identifies Samsung A04e EUR OPEN 00 and the HS04 board.
+- Runtime reports identify the Jadard touchscreen path; the exact physical
+  panel and populated touch-controller variant still require native testing.
+- HS04 charger DTS includes SGM41513 and UPM6910 candidates; both corresponding
+  kernel drivers are preserved/enabled. The actual fitted IC must be verified.
+- The vendor kernel uses legacy MTK framebuffer/LCM, not a verified DRM/KMS
+  display path. Phosh remains blocked.
+- The MT6765 combo source is separate from the kernel archive; it is now
+  pinned and included in the kernel build workflow.
+- Matching proprietary firmware is not included. It must be extracted from
+  the user's own stock SM-A042F vendor image.
 
-Detailed source analysis: `DISPLAY-TOUCH-PORTING-ANALYSIS.md`.
+Detailed display/touch source analysis remains in
+`DISPLAY-TOUCH-PORTING-ANALYSIS.md`.
 
-## New implementation work
+## Implementation work committed
 
-- Added `linux-samsung-a04e/APKBUILD` with the exact downstream source commit,
-  documented toolchain versions, and a minimal initramfs/storage config
-  fragment.
-- Added `device-samsung-a04e/APKBUILD`, conservative deviceinfo and a
+- Added kernel and device APKBUILDs, a conservative deviceinfo profile and
   minimal Linux kernel command line.
-- Configured Android boot-header-v2 / 2048-byte packaging for the Samsung `BOOT` partition using `heimdall-bootimg`; this is packaging metadata only and does not authorize flashing. `deviceinfo_drm="false"` remains correct.
-- Added a GitHub Actions kernel compile workflow. The first attempt failed during Kconfig because the source archive omitted the KernelSU-Next submodule required through `drivers/kernelsu`.
-- Fixed the workflow and APKBUILD to fetch and stage the exact KernelSU-Next gitlink commit. A new kernel build run is in progress; it is still only a compile test, not a native boot test.
-- Added `scripts/collect-panel-touch.sh` to collect runtime panel, input,
-  device-tree and kernel-log evidence without writing partitions.
-
-## Remaining engineering gates
-
-1. Review the toolchain SHA-256 values emitted by CI and replace provisional
-   `SKIP` source checksums with fixed hashes.
-2. Get the first downstream kernel compile to pass; fix source/toolchain issues.
-3. Build the APKBUILDs with pmbootstrap and validate the device package.
-4. Identify the exact LCD panel and touchscreen controller from the new
-   read-only handset report.
-5. Establish a safe, independently verified Samsung recovery route.
-6. Adapt or replace the legacy MediaTek display path with a working DRM/KMS
-   driver; the existing vendor framebuffer alone is not Phosh support.
-7. Produce a diagnostic initramfs and test native boot without touching
-   Android data or persistent partitions.
-8. Bring up display, touch, storage, USB, Wi-Fi, audio, battery and suspend.
-9. Integrate Phosh only after a DRM/KMS display and input stack work.
-10. Generate a postmarketOS image only after repeatable boot and recovery tests.
+- Configured Android boot-header-v2 / 2048-byte packaging for the Samsung
+  BOOT partition through Heimdall. This is packaging metadata only;
+  `deviceinfo_drm="false"` and `flashable: false` remain intentional.
+- Added devtmpfs/initramfs, storage, display, Jadard touch, MT6357 battery/
+  charger, SGM41513/UPM6910, audio, camera, modem, GPU, USB, sensors and
+  thermal configuration checks.
+- Enabled the MT6765 combo options for Gen4M Wi-Fi, Bluetooth WMT/BTIF,
+  GPS and FM.
+- Corrected the Alpine APKBUILD environment by adding GNU coreutils for
+  `readlink -m` used by the kernel config merge script.
+- Changed the image workflow to wait for the matching kernel build artifact,
+  verify its SHA-256 and kernel configuration, and stage that exact Image.gz.
+- Added build-time checks that the Gen4M WLAN, WMT/BTIF, GPS and FM object
+  trees were compiled.
 
 ## Current truthful status
 
-- Live defconfig match: verified.
-- Boot header and DTBO structure: inspected successfully.
-- HS04/A04e vendor display and touch source: inspected.
-- Kernel and device APKBUILD scaffolding: committed; pmbootstrap build not yet
-  verified.
-- Reproducible toolchain versions: pinned; archive checksums pending review.
-- Downstream kernel compilation: first attempt failed at `a04e_defconfig` because `drivers/kernelsu/Kconfig` was a dangling submodule symlink; fixed by pinning and staging KernelSU-Next commit `56c55b6...`; updated configuration compile run `42012843271` is in progress.
-- Exact active panel: unresolved.
-- Exact touchscreen controller: not fully resolved.
-- Diagnostic initramfs/native boot: not yet produced/tested.
-- DRM/KMS display and touchscreen on native Linux: not working/verified.
-- Phosh: not integrated.
-- A diagnostic postmarketOS image artifact was generated in earlier CI run `42006984809` using the previous kernel artifact/configuration; it has not been boot-tested and is not flashable. The image workflow still needs to be repointed to the newly compiled kernel artifact before a current image build is accepted.
-- Flash procedure: not verified; no partition writes.
+- Source pins and device safety metadata: committed.
+- Kernel configuration merge: previous run reached configuration; the
+  current MT6765 connectivity build is queued/running in GitHub Actions.
+- Full kernel compile with the pinned MT6765 connectivity tree: pending
+  successful CI completion.
+- pmbootstrap device/kernel package build: pending the matching kernel
+  artifact.
+- Diagnostic image: an earlier image artifact exists but used the previous
+  kernel/configuration; it is not accepted as the current image.
+- Exact physical panel: unresolved.
+- Native touchscreen, charging and display: not yet boot-tested.
+- Wi-Fi: vendor Gen4M driver source is included in the current build; stock
+  firmware extraction and on-device scan/association tests remain.
+- Bluetooth: WMT/BTIF low-level transport is included; a working BlueZ HCI
+  adapter is not established.
+- GPS/FM, audio, SIM/modem, GPU acceleration, camera and sensors: not
+  validated on native Linux.
+- Native Linux boot: not verified.
+- Flash procedure: not verified; no partition writes are authorized.
+
+Do not treat a successful kernel compile or image packaging job as proof of
+a bootable or fully working phone port.
