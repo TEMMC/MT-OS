@@ -71,10 +71,13 @@ jobs:
           kernel = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/APKBUILD").read_text()
           device = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/APKBUILD").read_text()
           fragment = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64").read_text()
+          cmdline = Path("linux/a04e/pmaports/device/downstream/device-samsung-a04e/kernel-cmdline.conf").read_text()
           toolchain = json.loads(Path("linux/a04e/pmaports/toolchains.json").read_text())
           checks = {
-              "Heimdall Android boot-image packaging configured": 'deviceinfo_flash_method="heimdall-bootimg"' in deviceinfo,
-              "Heimdall targets only the BOOT partition": 'deviceinfo_flash_heimdall_partition_kernel="BOOT"' in deviceinfo,
+              "automatic flashing is disabled": 'deviceinfo_flash_method="none"' in deviceinfo,
+              "dynamic super partition is declared": 'deviceinfo_super_partitions="/dev/block/mmcblk0p44"' in deviceinfo,
+              "Linux root selects the pmos_root logical partition": "pmos_root=/dev/mapper/pmos_root" in cmdline,
+              "Linux root does not target userdata": "root=/dev/mmcblk0p50" not in cmdline,
               "Android boot header v2 configured": 'deviceinfo_header_version="2"' in deviceinfo,
               "Android boot page size configured": 'deviceinfo_flash_pagesize="2048"' in deviceinfo,
               "flashability is not falsely claimed": '"flashable": false' in Path("linux/a04e/device.json").read_text(),
@@ -82,6 +85,8 @@ jobs:
               "kernel source commit pinned": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58" in kernel,
               "Clang pin recorded in toolchain manifest": toolchain["compiler"]["name"] == "clang-r383902",
               "device package depends on kernel": "linux-samsung-a04e" in device,
+              "device package includes dynamic partition mapper": "make-dynpart-mappings" in device,
+              "device mapper enabled in kernel": "CONFIG_BLK_DEV_DM=y" in fragment and "CONFIG_DM_LINEAR=y" in fragment,
               "devtmpfs enabled for initramfs": "CONFIG_DEVTMPFS=y" in fragment,
               "MT6765 combo Bluetooth WMT enabled": "CONFIG_MTK_COMBO_BT=y" in fragment,
               "MT6765 Gen4M Wi-Fi enabled": "CONFIG_MTK_COMBO_WIFI=y" in fragment,
