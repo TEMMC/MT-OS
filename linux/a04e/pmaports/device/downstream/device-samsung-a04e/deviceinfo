@@ -12,6 +12,11 @@ deviceinfo_screen_width="720"
 deviceinfo_screen_height="1600"
 deviceinfo_root_filesystem="ext4"
 
+# Android dynamic partitions are mapped by the postmarketOS initramfs.
+# The observed A04e GPT node is /dev/block/mmcblk0p44 (super).
+# The Linux root will be a logical partition named pmos_root inside super.
+deviceinfo_super_partitions="/dev/block/mmcblk0p44"
+
 # Stock boot partition is an Android boot image (header v2, 2048-byte pages).
 # Samsung Odin/Heimdall boot-image mode matches this boot-image format.
 # Heimdall compatibility and the full restore path must be validated before
