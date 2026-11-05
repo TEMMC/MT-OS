@@ -123,7 +123,7 @@ build() {
 
 	[ -s "$srcdir/Image.gz" ] || die "Verified prebuilt Image.gz is missing"
 	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765.dtb" ] || die "MT6765 base DTB missing"
-	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb" ] || die "A04e board DT overlay missing"
+	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb" ] || die "A04e board DTB missing"
 }
 
 package() {
