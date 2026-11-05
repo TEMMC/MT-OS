@@ -119,7 +119,9 @@ build() {
 	make O="$_outdir" ARCH="$_carch" olddefconfig
 
 	# Generate only the DTB outputs. Do not compile the kernel again.
-	make O="$_outdir" ARCH="$_carch" dtbs
+	# Export symbol labels in the base DTB so the /plugin/ A04e overlay can
+	# resolve its &chosen, &odm, &spi1, &touch and peripheral references.
+	make O="$_outdir" ARCH="$_carch" DTC_FLAGS="-@" dtbs
 
 	[ -s "$srcdir/Image.gz" ] || die "Verified prebuilt Image.gz is missing"
 	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765.dtb" ] || die "MT6765 base DTB missing"
@@ -132,6 +134,12 @@ build() {
 		-o "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00-merged.dtb" \
 		"$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00.dtb"
 	[ -s "$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00-merged.dtb" ] || die "Merged A04e device tree missing"
+	# Verify the merged tree really contains both the board panel node and
+	# the Jadard SPI controller binding expected by the handset diagnostics.
+	dtc -I dtb -O dts -o "$_outdir/a04e-merged-check.dts" \
+		"$_outdir/arch/arm64/boot/dts/mediatek/mt6765_a04e_eur_open_00-merged.dtb"
+	grep -Fq 'mediatek,lcm-panel' "$_outdir/a04e-merged-check.dts" || die "A04e panel node missing from merged DTB"
+	grep -Fq 'jadard,jdcommon' "$_outdir/a04e-merged-check.dts" || die "Jadard touchscreen node missing from merged DTB"
 }
 
 package() {
