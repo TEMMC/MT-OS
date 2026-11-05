@@ -43,6 +43,7 @@ jobs:
 
           pins = json.loads(Path("linux/a04e/kernel-sources.json").read_text())
           tools = json.loads(Path("linux/a04e/pmaports/toolchains.json").read_text())
+          kernel_apkbuild = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/APKBUILD").read_text()
           commit = "7c1b304f2df8df4c85abe6fe84b8238d7521bd58"
           assert pins["downstream"]["commit"] == commit
           assert pins["downstream"]["kernel_version"] == "4.19.191"
@@ -50,6 +51,7 @@ jobs:
           assert tools["kernel_source"]["commit"] == commit
           assert tools["compiler"]["name"] == "clang-r383902"
           assert tools["cross_toolchain"]["name"] == "arm-gnu-toolchain-14.2.rel1"
+          assert "3781c2b7d2a62372c56334dacfba191b78e2632baa61430454ede4410cdf183e5acd26ebb7d8c01b158e5845a2b72a9728f07472c9e2b88637432a1df00a1f48  Image.gz" in kernel_apkbuild
           print("A04e hardware and source pins are internally consistent.")
           PY
 
@@ -86,6 +88,7 @@ jobs:
         run: |
           bash -n linux/a04e/scripts/collect-a04e.sh
           bash -n linux/a04e/scripts/collect-panel-touch.sh
+          bash -n linux/a04e/scripts/fetch-a04e-kernel-artifact.sh
 
       - name: Check JSON and whitespace
         run: |
