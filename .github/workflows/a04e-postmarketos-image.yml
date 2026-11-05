@@ -168,8 +168,8 @@ jobs:
           Device package: device-samsung-a04e
           Kernel: reused Linux 4.19.191 Image.gz from workflow run 41811886477
           DTBs: rebuilt from the pinned A04e kernel source; not a full kernel rebuild
-          Interface: none (diagnostic bring-up image; DRM/KMS and touch are not ready)
-          Flashing: disabled in deviceinfo; do not flash this artifact
+          Display/touch kernel support: legacy MediaTek mtkfb/LCM and Jadard JD9365T are enabled in the pinned kernel; actual panel variant and Linux userspace presentation remain unverified
+          Flashing: NOT VALIDATED; do not flash this artifact. Use only for offline inspection and controlled diagnostic boot planning
           Default diagnostic login: pmos / pmos; change it immediately if booted
           DTBO: the handset's original DTBO partition has not been replaced
           INFO
@@ -177,7 +177,8 @@ jobs:
             [ -f "$boot" ] || continue
             boot_size="$(stat -c %s "$boot")"
             if [ "$boot_size" -gt 33554432 ]; then
-              echo "WARNING: $(basename "$boot") is ${boot_size} bytes; handset boot partition is only 33554432 bytes." >> "$OUT/BUILD-INFO.txt"
+              echo "ERROR: $(basename "$boot") is ${boot_size} bytes; handset boot partition is only 33554432 bytes." >&2
+              exit 1
             fi
           done
 
