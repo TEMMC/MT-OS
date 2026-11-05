@@ -156,7 +156,9 @@ jobs:
           test -d "$CONN_OUT"
           find "$CONN_OUT/wlan/core/gen4m" -name '*.o' -print -quit | grep -q .
           find "$CONN_OUT/common" -name '*.o' -print -quit | grep -q .
-          find "$CONN_OUT/bt/mt66xx/wmt" -name '*.o' -print -quit | grep -q .
+          # Bluetooth transport is integrated through the shared WMT/BTIF layer
+          # in this 4.19 source; there is no separate bt/mt66xx/wmt object tree.
+          test -s "$CONN_OUT/common/common_main/linux/stp_btif.o"
           find "$CONN_OUT/gps" -name '*.o' -print -quit | grep -q .
           find "$CONN_OUT/fmradio" -name '*.o' -print -quit | grep -q .
           grep -Fqx 'CONFIG_BLK_DEV_DM=y' "$A04E_SRC/out/.config"
