@@ -62,7 +62,7 @@ Detailed source analysis: `DISPLAY-TOUCH-PORTING-ANALYSIS.md`.
   fragment.
 - Added `device-samsung-a04e/APKBUILD`, conservative deviceinfo and a
   minimal Linux kernel command line.
-- Kept `deviceinfo_flash_method="none"` and `deviceinfo_drm="false"`.
+- Configured Android boot-header-v2 / 2048-byte packaging for the Samsung `BOOT` partition using `heimdall-bootimg`; this is packaging metadata only and does not authorize flashing. `deviceinfo_drm="false"` remains correct.
 - Added a GitHub Actions kernel compile workflow. The first attempt failed during Kconfig because the source archive omitted the KernelSU-Next submodule required through `drivers/kernelsu`.
 - Fixed the workflow and APKBUILD to fetch and stage the exact KernelSU-Next gitlink commit. A new kernel build run is in progress; it is still only a compile test, not a native boot test.
 - Added `scripts/collect-panel-touch.sh` to collect runtime panel, input,
@@ -93,11 +93,11 @@ Detailed source analysis: `DISPLAY-TOUCH-PORTING-ANALYSIS.md`.
 - Kernel and device APKBUILD scaffolding: committed; pmbootstrap build not yet
   verified.
 - Reproducible toolchain versions: pinned; archive checksums pending review.
-- Downstream kernel compilation: first attempt failed at `a04e_defconfig` because `drivers/kernelsu/Kconfig` was a dangling submodule symlink; fixed by pinning and staging KernelSU-Next commit `56c55b6...`; repaired build currently running.
+- Downstream kernel compilation: first attempt failed at `a04e_defconfig` because `drivers/kernelsu/Kconfig` was a dangling submodule symlink; fixed by pinning and staging KernelSU-Next commit `56c55b6...`; updated configuration compile run `42012843271` is in progress.
 - Exact active panel: unresolved.
 - Exact touchscreen controller: not fully resolved.
 - Diagnostic initramfs/native boot: not yet produced/tested.
 - DRM/KMS display and touchscreen on native Linux: not working/verified.
 - Phosh: not integrated.
-- postmarketOS image: not generated.
+- A diagnostic postmarketOS image artifact was generated in earlier CI run `42006984809` using the previous kernel artifact/configuration; it has not been boot-tested and is not flashable. The image workflow still needs to be repointed to the newly compiled kernel artifact before a current image build is accepted.
 - Flash procedure: not verified; no partition writes.
