@@ -39,10 +39,21 @@ The HS04 base DTS defines a vendor LCM panel node:
 - touchscreen reset GPIO: PIO 172
 - display PWM pinctrl states: `disp_pwm`, `disp_pwm_gpio`
 
-The DTS also contains an `atag,videolfb-lcmname` value naming
-`nt35695B_fhd_dsi_cmd_auo_rt5081_drv`, but its surrounding comments explicitly
-describe an FPGA/no-LK fallback. It must not be treated as proof of the actual
-A04e production panel.
+New live runtime evidence from the handset's `/sys/firmware/devicetree/base/chosen`
+reports:
+
+- `atag,videolfb-lcmname`: `nt35695B_fhd_dsi_cmd_auo_rt5081_drv`
+- `atag,videolfb-islcmfound`: `1`
+- `atag,videolfb-islcm_inited`: `0`
+
+This is stronger than relying on the static fallback property in the source DTS:
+the running bootloader reports this LCM name and says it found the panel. The
+`islcm_inited=0` flag means we must not claim that the bootloader initialized it.
+The handset also reports a 720x1600 active framebuffer mode, and TWRP
+`3.7.1-12-citty2029` has working display and touch. Use the reported LCM name as
+the leading source-search target, but verify the actual DSI mode, panel sequence,
+resets, bias rails and backlight before implementing a Linux DRM panel driver.
+Do not infer 1080p timings from the `fhd` substring in the identifier.
 
 The exact A04e defconfig selects the HS04 project and enables the legacy
 MediaTek LCM/framebuffer stack:
@@ -99,9 +110,11 @@ are compiled/configured candidate drivers; the source configuration alone
 does not prove which physical controller is populated in this handset.
 
 The user's runtime diagnostics previously reported input devices named
-`jadard-touchscreen` and `mtk-tpd`. This is useful evidence, but the exact
-bound controller and its Linux-mainline-compatible driver still need to be
-established before writing the postmarketOS device package.
+`jadard-touchscreen` and `mtk-tpd`, with the active SPI1.1 node identified as
+`jadard,jdcommon` and bound to `jadard_tp`. TWRP `3.7.1-12-citty2029` also has
+working touchscreen input. This proves that the recovery environment can use
+the handset's touch hardware; it does not prove that the postmarketOS kernel,
+its SPI resources, IRQ/reset configuration or userspace input stack work.
 
 ## Consequences for the port
 
@@ -125,8 +138,10 @@ established before writing the postmarketOS device package.
 - HS04 board family and A04e DTS: source-confirmed.
 - A04e/MT6765 DTBO identity: confirmed from the user's extracted overlay.
 - Vendor display implementation and panel candidate list: source-confirmed.
-- Exact physical LCD panel variant: unresolved.
-- Exact physical touch controller: not fully resolved.
+- Bootloader-reported LCM identifier: `nt35695B_fhd_dsi_cmd_auo_rt5081_drv`, with `lcmfound=1` and `lcm_inited=0`.
+- Physical panel timing/init sequence: still requires correlation with the vendor source; active mode is 720x1600.
+- TWRP 3.7.1-12-citty2029 display and touchscreen: working in recovery; native Linux display/touch remain untested.
+- Exact physical touch controller: runtime points to Jadard on SPI1.1; native Linux binding remains untested.
 - Upstream MT6765 DRM/KMS support: not present in the inspected current
   upstream MediaTek DRM match table.
 - Native postmarketOS boot, DRM/KMS display, Phosh and touchscreen: not yet
