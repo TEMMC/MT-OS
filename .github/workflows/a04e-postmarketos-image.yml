@@ -284,16 +284,16 @@ jobs:
             echo "postmarketOS root image ($ROOT_SIZE bytes) does not fit safely in A04e super ($SUPER_SIZE bytes)." >&2
             exit 1
           fi
-          "$A04E_LPTOOLS/lpmake" \\
-            --metadata-size 65536 \\
-            --metadata-slots 2 \\
-            --super-name super \\
-            --device "super:$SUPER_SIZE" \\
-            --alignment "$ALIGN" \\
-            --alignment-offset 0 \\
-            --group "main:$GROUP_SIZE" \\
-            --partition "pmos_root:none:$PARTITION_SIZE:main" \\
-            --image "pmos_root=$OUT/pmos_root.ext4.img" \\
+          "$A04E_LPTOOLS/lpmake" \
+            --metadata-size 65536 \
+            --metadata-slots 2 \
+            --super-name super \
+            --device "super:$SUPER_SIZE" \
+            --alignment "$ALIGN" \
+            --alignment-offset 0 \
+            --group "main:$GROUP_SIZE" \
+            --partition "pmos_root:none:$PARTITION_SIZE:main" \
+            --image "pmos_root=$OUT/pmos_root.ext4.img" \
             --output "$OUT/super.img"
 
           test "$(stat -c %s "$OUT/super.img")" -eq "$SUPER_SIZE"
