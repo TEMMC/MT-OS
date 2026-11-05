@@ -38,8 +38,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git python3 python3-pip python3-venv \
             python3-yaml python3-requests python3-pexpect expect \
-            build-essential ca-certificates curl e2fsprogs jq rsync \
-            xz-utils zip unzip
+            build-essential clang ca-certificates curl e2fsprogs jq rsync \
+            android-sdk-libsparse-utils xz-utils zip unzip
 
       # Wait for the kernel workflow triggered by this exact source commit.
       # This prevents packaging an older kernel artifact after a device/config change.
@@ -191,6 +191,24 @@ jobs:
             --password pmos --no-firewall --no-recommends
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 initfs build
 
+      - name: Build pinned Android logical-partition tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLS="$RUNNER_TEMP/android-lptools"
+          git clone https://github.com/itsNileshHere/android-lptools.git "$TOOLS"
+          git -C "$TOOLS" checkout b7b5c09916ab88074692006db7dab34256da6e24
+          (
+            cd "$TOOLS"
+            bash ./make.sh
+          )
+          for tool in lpmake lpdump lpunpack; do
+            test -x "$TOOLS/bin/$tool"
+          done
+          "$TOOLS/bin/lpmake" --help >/dev/null
+          "$TOOLS/bin/lpdump" --help >/dev/null 2>&1 || true
+          echo "A04E_LPTOOLS=$TOOLS/bin" >> "$GITHUB_ENV"
+
       - name: Export and validate build outputs
         shell: bash
         run: |
@@ -206,59 +224,111 @@ jobs:
           timeout --signal=TERM --kill-after=30s 10m \
             pmbootstrap -c "$A04E_PMB_CONFIG" export --no-install "$EXPORTED"
 
-          shopt -s nullglob
-          exported_files=("$EXPORTED"/*)
-          if [ "${#exported_files[@]}" -eq 0 ]; then
-            echo "pmbootstrap export produced no entries."
-            find "$EXPORTED" -maxdepth 1 -printf '%y %p -> %l\\n'
-            exit 1
-          fi
-
-          for file in "${exported_files[@]}"; do
-            if [ -f "$file" ]; then
-              cp -L -- "$file" "$OUT/$(basename "$file")"
-            fi
+          BOOT_SOURCE=""
+          for candidate in "$EXPORTED/boot.img" "$EXPORTED/samsung-a04e-boot.img"; do
+            if [ -s "$candidate" ]; then BOOT_SOURCE="$candidate"; break; fi
           done
-
-          if ! find "$OUT" -maxdepth 1 -type f -name '*.img' -size +1M -print -quit | grep -q .; then
-            echo "No postmarketOS image file larger than 1 MiB was exported."
-            echo "pmbootstrap export directory:"
+          ROOT_SOURCE=""
+          for candidate in "$EXPORTED/samsung-a04e-root.img" "$EXPORTED/root.img"; do
+            if [ -s "$candidate" ]; then ROOT_SOURCE="$candidate"; break; fi
+          done
+          if [ -z "$BOOT_SOURCE" ] || [ -z "$ROOT_SOURCE" ]; then
+            echo "Expected pmbootstrap boot.img and samsung-a04e-root.img exports were not found."
+            echo "Export directory:"
             find "$EXPORTED" -maxdepth 1 -printf '%y %p -> %l\\n'
-            echo "Collected output directory:"
-            find "$OUT" -maxdepth 1 -printf '%y %p (%s bytes)\\n'
             exit 1
           fi
+          cp -L -- "$BOOT_SOURCE" "$OUT/boot.img"
+          cp -L -- "$ROOT_SOURCE" "$OUT/pmos_root.ext4.img"
 
-          cat > "$OUT/BUILD-INFO.txt" <<'INFO'
-          Target: Samsung Galaxy A04e SM-A042F
-          Distribution: postmarketOS edge
-          User interface: Phosh (experimental; Phoc/display backend not hardware-validated)
-          Mobile services: ModemManager, NetworkManager, iio-sensor-proxy
-          Device package: device-samsung-a04e
-          Kernel: reused Linux 4.19.191 Image.gz from matching successful kernel workflow run ${{ steps.kernel.outputs.run_id }}
-          DTBs: rebuilt from the pinned A04e kernel source; not a full kernel rebuild
-          Display/touch kernel support: legacy MediaTek mtkfb/LCM and Jadard JD9365T are enabled in the pinned kernel; actual panel variant and Linux userspace presentation remain unverified
-          Display: legacy MTK framebuffer/LCM only; no verified DRM/KMS backend. Phosh is packaged but may not start on-device until a working Phoc display backend is ported.
-          Flashing: NOT VALIDATED; do not flash this artifact. Use only for offline inspection and controlled diagnostic boot planning
-          Default diagnostic login: pmos / pmos; change it immediately if booted
-          DTBO: the handset's original DTBO partition has not been replaced
+          # Normalize Android sparse rootfs input to a raw ext4 image if needed.
+          magic="$(od -An -tx1 -N4 "$OUT/pmos_root.ext4.img" | tr -d ' \\n')"
+          if [ "$magic" = "3aff26ed" ]; then
+            simg2img "$OUT/pmos_root.ext4.img" "$OUT/pmos_root.raw.img"
+            mv "$OUT/pmos_root.raw.img" "$OUT/pmos_root.ext4.img"
+          fi
+          file "$OUT/pmos_root.ext4.img"
+          e2fsck -fn "$OUT/pmos_root.ext4.img"
+
+          # Verify Android boot header v2, the actual page size, and the root
+          # device passed to the initramfs. The stock BOOT partition is 32 MiB.
+          python3 - "$OUT/boot.img" <<'PY'
+          import os, struct, sys
+          path=sys.argv[1]
+          data=open(path,"rb").read()
+          if data[:8] != b"ANDROID!":
+              raise SystemExit("boot.img is not an Android boot image")
+          kernel, ramdisk = struct.unpack_from("<II", data, 8)[0], struct.unpack_from("<I", data, 16)[0]
+          page, version = struct.unpack_from("<II", data, 36)
+          if version != 2: raise SystemExit(f"Expected Android boot header v2, got {version}")
+          if page != 2048: raise SystemExit(f"Expected 2048-byte page size, got {page}")
+          if not kernel or not ramdisk: raise SystemExit("Kernel or initramfs payload is empty")
+          cmdline=(data[64:576]+data[608:1632]).split(b"\\0",1)[0].decode("ascii","ignore")
+          if "root=/dev/mapper/pmos_root" not in cmdline:
+              raise SystemExit("boot.img command line does not select /dev/mapper/pmos_root")
+          if os.path.getsize(path) > 32*1024*1024:
+              raise SystemExit("boot.img exceeds the observed 32 MiB BOOT partition")
+          print(f"Android boot header v{version}; page={page}; kernel={kernel}; ramdisk={ramdisk}; size={len(data)}")
+          print("Kernel command line:",cmdline)
+          PY
+
+          # Build a fresh Android dynamic-partition super image containing only
+          # pmos_root. This intentionally replaces the Android logical partitions
+          # in super; it does not touch userdata or the physical GPT.
+          SUPER_SIZE=6786383872
+          ROOT_SIZE="$(stat -c %s "$OUT/pmos_root.ext4.img")"
+          ALIGN=1048576
+          PARTITION_SIZE=$(( (ROOT_SIZE + ALIGN - 1) / ALIGN * ALIGN ))
+          GROUP_SIZE=$(( SUPER_SIZE - ALIGN ))
+          if [ "$PARTITION_SIZE" -ge "$GROUP_SIZE" ]; then
+            echo "postmarketOS root image ($ROOT_SIZE bytes) does not fit safely in A04e super ($SUPER_SIZE bytes)." >&2
+            exit 1
+          fi
+          "$A04E_LPTOOLS/lpmake" \\
+            --metadata-size 65536 \\
+            --metadata-slots 2 \\
+            --super-name super \\
+            --device "super:$SUPER_SIZE" \\
+            --alignment "$ALIGN" \\
+            --alignment-offset 0 \\
+            --group "main:$GROUP_SIZE" \\
+            --partition "pmos_root:none:$PARTITION_SIZE:main" \\
+            --image "pmos_root=$OUT/pmos_root.ext4.img" \\
+            --output "$OUT/super.img"
+
+          test "$(stat -c %s "$OUT/super.img")" -eq "$SUPER_SIZE"
+          "$A04E_LPTOOLS/lpdump" "$OUT/super.img" | tee "$OUT/SUPER-METADATA.txt"
+          grep -Fq "pmos_root" "$OUT/SUPER-METADATA.txt"
+
+          # Round-trip the logical partition and run a read-only filesystem check.
+          VERIFY="$RUNNER_TEMP/a04e-super-roundtrip"
+          mkdir -p "$VERIFY"
+          "$A04E_LPTOOLS/lpunpack" "$OUT/super.img" "$VERIFY"
+          test -s "$VERIFY/pmos_root.img"
+          cmp -n "$ROOT_SIZE" "$OUT/pmos_root.ext4.img" "$VERIFY/pmos_root.img"
+          e2fsck -fn "$VERIFY/pmos_root.img"
+
+          cat > "$OUT/BUILD-INFO.txt" <<INFO
+          Target: Samsung Galaxy A04e SM-A042F (A-only)
+          Distribution: postmarketOS edge / Phosh (experimental)
+          Commit: $GITHUB_SHA
+          Kernel: matching A04e Linux 4.19.191 build artifact
+          boot.img: Android boot header v2, 2048-byte pages, verified against 32 MiB BOOT partition limit
+          super.img: raw Android dynamic-partition image, exact observed size $SUPER_SIZE bytes
+          super.img contents: one logical ext4 partition named pmos_root
+          Dynamic metadata: 65536-byte metadata, 2 metadata slots, 1 MiB alignment
+          Root mapping: /dev/mapper/pmos_root; initramfs make-dynpart-mappings
+          Destructive scope: flashing super.img replaces Android system/odm/product/system_ext/vendor logical partitions. It does not contain or overwrite userdata or GPT.
+          Validation: lpdump metadata parse, lpunpack round-trip byte comparison, e2fsck read-only check, boot header/cmdline/size checks.
+          Hardware status: NOT runtime-tested on the handset. Display compositor, touch input, charging, Wi-Fi, Bluetooth, audio, modem/calls/SMS and suspend still require on-device validation. Do not treat CI structural checks as proof of a working boot.
+          Flashing: NOT AUTHORIZED/NOT VALIDATED. Preserve stock boot, super, vbmeta and recovery backups before any test.
           INFO
-          for boot in "$OUT"/boot*.img; do
-            [ -f "$boot" ] || continue
-            boot_size="$(stat -c %s "$boot")"
-            if [ "$boot_size" -gt 33554432 ]; then
-              echo "ERROR: $(basename "$boot") is ${boot_size} bytes; handset boot partition is only 33554432 bytes." >&2
-              exit 1
-            fi
-          done
 
-          # Generate checksums only for actual deliverables, not the checksum
-          # file itself.
+          rm -f "$OUT/pmos_root.ext4.img"
           find "$OUT" -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -print0 |
             sort -z | xargs -0 -r sha256sum > "$OUT/SHA256SUMS.txt"
-          echo "Validated export files:"
+          echo "Validated A04e dual-image outputs:"
           find "$OUT" -maxdepth 1 -type f -printf '%f %s bytes\\n' | sort
-
       - name: Print pmbootstrap log if the build fails
         if: failure()
         shell: bash
