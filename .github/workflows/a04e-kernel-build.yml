@@ -5,6 +5,7 @@ on:
     paths:
       - "linux/a04e/**"
       - ".github/workflows/a04e-kernel-build.yml"
+      - ".github/workflows/a04e-postmarketos-image.yml"
   pull_request:
     paths:
       - "linux/a04e/**"
