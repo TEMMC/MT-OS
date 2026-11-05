@@ -263,7 +263,7 @@ jobs:
           if version != 2: raise SystemExit(f"Expected Android boot header v2, got {version}")
           if page != 2048: raise SystemExit(f"Expected 2048-byte page size, got {page}")
           if not kernel or not ramdisk: raise SystemExit("Kernel or initramfs payload is empty")
-          cmdline=(data[64:576]+data[608:1632]).split(b"\\0",1)[0].decode("ascii","ignore")
+          cmdline=(data[64:576]+data[608:1632]).split(b"\0",1)[0].decode("ascii","ignore")
           if "root=/dev/mapper/pmos_root" not in cmdline:
               raise SystemExit("boot.img command line does not select /dev/mapper/pmos_root")
           if os.path.getsize(path) > 32*1024*1024:
