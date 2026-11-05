@@ -55,19 +55,28 @@
     "device_report_generated": "2026-11-03T13:15:57"
   },
   "connectivity_modules": {
-    "repository": "https://github.com/AbzRaider/vendor-mediatek-kernel_modules-connectivity_4.19.git",
-    "ref": "lyriq_4.19",
-    "commit": "9c4222a3d884e57cf82dda1668f356559e8c8444",
-    "purpose": "MT6765/CONNAC Gen4M WLAN source and shared WMT connectivity source",
-    "build_mode": "WLAN_DRV_BUILD_IN=y",
+    "repository": "https://github.com/rsuntk-oss/mtk_connectivity_module.git",
+    "ref": "staging-4.19",
+    "commit": "3d48d43caa96b6f9be8a06199ee6eb2241d79153",
+    "purpose": "MT6765/MT6768 4.19 vendor combo connectivity stack",
+    "build_mode": "CONFIG_DRV_BUILD_IN=y",
+    "platform": "MT6765",
+    "combo_chip": "CONSYS_6765",
     "wlan_chip_id": 6765,
-    "combo_chip": "CONNAC",
-    "hif": "axi",
+    "bt_platform": "connac1x",
+    "components": [
+      "WMT common",
+      "Gen4M Wi-Fi",
+      "Bluetooth WMT transport",
+      "GPS",
+      "FM radio"
+    ],
     "status": "source-pinned; compile validation pending",
     "notes": [
-      "The pinned 4.19 connectivity tree contains common/common_main/platform/mt6765.c and the Gen4M WLAN core/adaptor paths expected by the downstream kernel Makefile.",
-      "The Samsung handset firmware blobs are not redistributed; firmware extraction from the user's matching stock vendor image is still required.",
-      "Bluetooth HCI transport is not yet included in this WLAN build step and remains separately validated."
+      "README explicitly lists MT6765/MT6768 support and Linux 4.19.x compatibility.",
+      "The root Makefile selects CONNAC, HIF=axi, WLAN_CHIP_ID=6765, MTK_ANDROID_WMT and the MT6631 FM path from CONFIG_MTK_COMBO_CHIP_CONSYS_6765.",
+      "Bluetooth WMT char-device transport is included; a BlueZ HCI interface is not yet proven by this source tree.",
+      "Matching proprietary firmware blobs are not redistributed and must be extracted from the user's stock SM-A042F vendor image."
     ]
   }
 }
