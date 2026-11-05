@@ -64,12 +64,17 @@ jobs:
           fragment = Path("linux/a04e/pmaports/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64").read_text()
           toolchain = json.loads(Path("linux/a04e/pmaports/toolchains.json").read_text())
           checks = {
-              "flashing disabled": 'deviceinfo_flash_method="none"' in deviceinfo,
+              "Heimdall Android boot-image packaging configured": 'deviceinfo_flash_method="heimdall-bootimg"' in deviceinfo,
+              "Heimdall targets only the BOOT partition": 'deviceinfo_flash_heimdall_partition_kernel="BOOT"' in deviceinfo,
+              "Android boot header v2 configured": 'deviceinfo_header_version="2"' in deviceinfo,
+              "Android boot page size configured": 'deviceinfo_flash_pagesize="2048"' in deviceinfo,
+              "flashability is not falsely claimed": '"flashable": false' in Path("linux/a04e/device.json").read_text(),
               "DRM not falsely advertised": 'deviceinfo_drm="false"' in deviceinfo,
               "kernel source commit pinned": "7c1b304f2df8df4c85abe6fe84b8238d7521bd58" in kernel,
               "Clang pin recorded in toolchain manifest": toolchain["compiler"]["name"] == "clang-r383902",
               "device package depends on kernel": "linux-samsung-a04e" in device,
               "devtmpfs enabled for initramfs": "CONFIG_DEVTMPFS=y" in fragment,
+              "DRM/KMS remains explicitly unclaimed": 'deviceinfo_drm="false"' in deviceinfo,
           }
           for name, ok in checks.items():
               print(("PASS" if ok else "FAIL") + ": " + name)
