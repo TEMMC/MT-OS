@@ -50,7 +50,16 @@ The 2026-11-05 runtime report confirms:
 - Active SPI touchscreen at `spi1.1`, compatible `jadard,jdcommon`, bound to `jadard_tp`, exposed as `jadard-touchscreen`.
 - Chipone and GalaxyCore SPI nodes are also present, but they are not the active input device in this report.
 
-The active Jadard identity is enough to target the correct controller family in the device tree, but the downstream Android driver's successful binding does not prove that the driver works in a postmarketOS boot. The exact LCD panel sequence and a Linux display stack are still unresolved. The current kernel package deliberately does not claim DRM/KMS support.
+The pinned kernel source and the previously successful kernel artifact have now been inspected directly. The artifact's saved `kernel.config` confirms:
+
+- `CONFIG_MTK_LCM=y` and `CONFIG_MTK_FB=y`: the vendor MediaTek LCM/framebuffer display path is compiled in.
+- `CONFIG_CUSTOM_KERNEL_LCM` includes the HS04 panel candidates: JD9365T TXD CTC, GC7202 LS HSD, NL9911C HLT HKC, JD9365T TXD BOE, NL9911C HR HR, JD9365T TXD CTC JBPD, and the HS04 default.
+- `CONFIG_TOUCHSCREEN_JADARD_MODULE=y`, `CONFIG_TOUCHSCREEN_JADARD_IC_JD9365T=y`, `CONFIG_TOUCHSCREEN_JADARD_COMMON=y`, and `CONFIG_TOUCHSCREEN_JADARD_CHIPSET_M04=y`: the Jadard JD9365T driver family is compiled in.
+- The HS04 device tree declares the Jadard controller on SPI1.1 with 720x1600 coordinates, 10 touch points, interrupt GPIO 10 and reset GPIO 172.
+
+This is materially better than an unsupported generic kernel: the pinned kernel contains the correct vendor display and Jadard driver families, and the board DTS contains the matching SPI touch node. The kernel package now fails its build if these display/touch config options disappear.
+
+**Still not proven:** which one of the seven LCD panel variants is physically installed/selected at runtime; whether the LK/bootloader hand-off selects the right LCM driver for a postmarketOS boot; whether the framebuffer remains active after Linux userspace starts; and whether touch events work in the postmarketOS initramfs. DRM/KMS is not enabled, so this is not yet a Phosh-capable graphics stack. The current image workflow is a diagnostic bring-up build, not a finished graphical Linux phone image.
 
 ## Build status
 
