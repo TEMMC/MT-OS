@@ -126,14 +126,21 @@ jobs:
           # CI overlay avoids modifying the repository or recompiling the kernel.
           KAPK="$PMAPORTS/device/downstream/linux-samsung-a04e/APKBUILD"
           CONFIG_FILE="$PMAPORTS/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
+          IMAGE_FILE="$PMAPORTS/device/downstream/linux-samsung-a04e/Image.gz"
           CONFIG_HASH="$(sha512sum "$CONFIG_FILE" | awk '{print $1}')"
-          awk -v config_hash="$CONFIG_HASH" '
+          IMAGE_HASH="$(sha512sum "$IMAGE_FILE" | awk '{print $1}')"
+          # abuild validates every source with sha512sum; literal SKIP entries
+          # are not accepted by this edge abuild version. Hash both staged inputs.
+          awk -v config_hash="$CONFIG_HASH" -v image_hash="$IMAGE_HASH" '
             /config-samsung-a04e[.]aarch64$/ { print config_hash "  config-samsung-a04e.aarch64"; next }
+            /^[[:space:]]*SKIP[[:space:]]+Image[.]gz$/ { print image_hash "  Image.gz"; next }
             /^[[:space:]]*CONFIG_DM_LINEAR=y/ { next }
             { print }
           ' "$KAPK" > "$KAPK.tmp"
           mv "$KAPK.tmp" "$KAPK"
           grep -Fq "$CONFIG_HASH  config-samsung-a04e.aarch64" "$KAPK"
+          grep -Fq "$IMAGE_HASH  Image.gz" "$KAPK"
+          ! grep -Fq "SKIP" "$KAPK"
           ! grep -Fq "CONFIG_DM_LINEAR=y" "$KAPK"
           ln -sf "$PMB/pmbootstrap.py" "$HOME/.local/bin/pmbootstrap"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
