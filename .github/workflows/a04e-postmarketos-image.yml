@@ -104,7 +104,8 @@ jobs:
           test -s "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
           grep -Fqx 'CONFIG_DEVTMPFS=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
           grep -Fqx 'CONFIG_BLK_DEV_DM=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
-          grep -Fqx 'CONFIG_DM_LINEAR=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
+          # Linux 4.19 has no CONFIG_DM_LINEAR Kconfig symbol; dm-linear is built into dm-mod.
+          # The matching kernel workflow verifies drivers/md/dm-linear.o was actually built.
           grep -Fqx 'CONFIG_POWER_SUPPLY=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
           grep -Fqx 'CONFIG_MTK_CHARGER=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
           grep -Fqx 'CONFIG_MTK_COMBO_WIFI=y' "$RUNNER_TEMP/a04e-prebuilt-kernel/kernel.config"
