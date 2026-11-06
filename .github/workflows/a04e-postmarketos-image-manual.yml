@@ -271,7 +271,6 @@ jobs:
           trap - EXIT
 
           file "$OUT/pmos_root.ext4.img"
-          e2fsck -fn "$OUT/pmos_root.ext4.img"
 
           # Verify Android boot header v2, the actual page size, and the root
           # device passed to the initramfs. The stock BOOT partition is 32 MiB.
@@ -332,7 +331,18 @@ jobs:
           "$A04E_LPTOOLS/lpunpack" "$OUT/super.img" "$VERIFY"
           test -s "$VERIFY/pmos_root.img"
           cmp -n "$ROOT_SIZE" "$OUT/pmos_root.ext4.img" "$VERIFY/pmos_root.img"
-          e2fsck -fn "$VERIFY/pmos_root.img"
+          # Ubuntu 22.04's e2fsck (1.46.5) cannot read the ext4 orphan_file
+          # feature emitted by current postmarketOS edge. Validate both copies
+          # with Ubuntu 24.04's newer e2fsprogs inside a disposable container.
+          docker run --rm \\
+            -v "$OUT:/images:ro" \\
+            -v "$VERIFY:/verify:ro" \\
+            ubuntu:24.04 bash -euc '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends e2fsprogs
+              e2fsck -fn /images/pmos_root.ext4.img
+              e2fsck -fn /verify/pmos_root.img
+            '
 
           cat > "$OUT/BUILD-INFO.txt" <<INFO
           Target: Samsung Galaxy A04e SM-A042F (A-only)
