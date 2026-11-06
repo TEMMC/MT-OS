@@ -125,13 +125,15 @@ jobs:
           # checksum predates the latest config edits. Refreshing it in this isolated
           # CI overlay avoids modifying the repository or recompiling the kernel.
           KAPK="$PMAPORTS/device/downstream/linux-samsung-a04e/APKBUILD"
-          awk '
-            /config-samsung-a04e[.]aarch64$/ { print "SKIP  config-samsung-a04e.aarch64"; next }
+          CONFIG_FILE="$PMAPORTS/device/downstream/linux-samsung-a04e/config-samsung-a04e.aarch64"
+          CONFIG_HASH="$(sha512sum "$CONFIG_FILE" | awk '{print $1}')"
+          awk -v config_hash="$CONFIG_HASH" '
+            /config-samsung-a04e[.]aarch64$/ { print config_hash "  config-samsung-a04e.aarch64"; next }
             /^[[:space:]]*CONFIG_DM_LINEAR=y/ { next }
             { print }
           ' "$KAPK" > "$KAPK.tmp"
           mv "$KAPK.tmp" "$KAPK"
-          grep -Fq "SKIP  config-samsung-a04e.aarch64" "$KAPK"
+          grep -Fq "$CONFIG_HASH  config-samsung-a04e.aarch64" "$KAPK"
           ! grep -Fq "CONFIG_DM_LINEAR=y" "$KAPK"
           ln -sf "$PMB/pmbootstrap.py" "$HOME/.local/bin/pmbootstrap"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
