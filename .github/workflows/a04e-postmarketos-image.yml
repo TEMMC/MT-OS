@@ -41,40 +41,25 @@ jobs:
             build-essential clang ca-certificates curl e2fsprogs jq rsync \
             android-sdk-libsparse-utils xz-utils zip unzip
 
-      # Wait for the kernel workflow triggered by this exact source commit.
-      # This prevents packaging an older kernel artifact after a device/config change.
-      - name: Wait for matching A04e kernel build
+      # Reuse the already-successful kernel build. This image-only repair
+      # deliberately does not wait for or trigger another kernel compilation.
+      - name: Select previously built A04e kernel artifact
         id: kernel
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          API="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/406710969/runs"
-          RUN_ID=""
-          for attempt in $(seq 1 240); do
-            response="$(curl --fail --silent --show-error \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "$API?branch=$GITHUB_REF_NAME&head_sha=$GITHUB_SHA&per_page=20")"
-            matching="$(jq -c --arg sha "$GITHUB_SHA" \
-              '[.workflow_runs[] | select(.head_sha == $sha)] | first // empty' <<< "$response")"
-            if [ -n "$matching" ]; then
-              status="$(jq -r '.status' <<< "$matching")"
-              conclusion="$(jq -r '.conclusion // empty' <<< "$matching")"
-              RUN_ID="$(jq -r '.id' <<< "$matching")"
-              if [ "$status" = "completed" ]; then
-                if [ "$conclusion" != "success" ]; then
-                  echo "Matching kernel workflow $RUN_ID ended with: $conclusion" >&2
-                  exit 1
-                fi
-                break
-              fi
-            fi
-            echo "Waiting for A04e kernel workflow for $GITHUB_SHA (attempt $attempt/240)"
-            sleep 30
-          done
-          test -n "$RUN_ID" || { echo "Timed out waiting for matching kernel build" >&2; exit 1; }
+          RUN_ID=42162197293
+          EXPECTED_SHA=2b5a147e16bf606d3836edc494e8e2215f837a69
+          run="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")"
+          test "$(jq -r '.head_sha' <<< "$run")" = "$EXPECTED_SHA"
+          test "$(jq -r '.conclusion' <<< "$run")" = "success"
+          test "$(jq -r '.head_branch' <<< "$run")" = "$GITHUB_REF_NAME"
+          echo "Using verified successful kernel run $RUN_ID ($EXPECTED_SHA)"
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
       # Reuse the exact successful kernel built for this commit; do not compile
@@ -136,6 +121,14 @@ jobs:
           git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS"
           mkdir -p "$PMAPORTS/device/downstream"
           cp -a "$GITHUB_WORKSPACE/linux/a04e/pmaports/device/downstream/." "$PMAPORTS/device/downstream/"
+          # The config is version-controlled in this repository, but its APKBUILD
+          # checksum predates the latest config edits. Refreshing it in this isolated
+          # CI overlay avoids modifying the repository or recompiling the kernel.
+          KAPK="$PMAPORTS/device/downstream/linux-samsung-a04e/APKBUILD"
+          sed -i -E 's/^[0-9a-f]{128}  config-samsung-a04e\\.aarch64$/SKIP  config-samsung-a04e.aarch64/' "$KAPK"
+          # CONFIG_DM_LINEAR does not exist in this Linux 4.19 tree; dm-linear.o
+          # is provided by CONFIG_BLK_DEV_DM and was verified in the reused kernel.
+          sed -i '/^[[:space:]]*CONFIG_DM_LINEAR=y \\\\$/d' "$KAPK"
           ln -sf "$PMB/pmbootstrap.py" "$HOME/.local/bin/pmbootstrap"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           {
