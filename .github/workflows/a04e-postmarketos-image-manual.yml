@@ -333,9 +333,9 @@ jobs:
           # Ubuntu 22.04's e2fsck (1.46.5) cannot read the ext4 orphan_file
           # feature emitted by current postmarketOS edge. Validate both copies
           # with Ubuntu 24.04's newer e2fsprogs inside a disposable container.
-          docker run --rm \\
-            -v "$OUT:/images:ro" \\
-            -v "$VERIFY:/verify:ro" \\
+          docker run --rm \
+            -v "$OUT:/images:ro" \
+            -v "$VERIFY:/verify:ro" \
             ubuntu:24.04 bash -euc '
               apt-get update
               DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends e2fsprogs
