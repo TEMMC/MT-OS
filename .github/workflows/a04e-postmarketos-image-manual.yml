@@ -312,7 +312,7 @@ jobs:
           "$A04E_LPTOOLS/lpmake" \
             --metadata-size 65536 \
             --metadata-slots 2 \
-            --device "super:$SUPER_SIZE" \
+            --device-size "$SUPER_SIZE" \
             --alignment "$ALIGN" \
             --alignment-offset 0 \
             --group "main:$GROUP_SIZE" \
