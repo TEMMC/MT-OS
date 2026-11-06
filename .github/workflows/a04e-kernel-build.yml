@@ -164,6 +164,7 @@ jobs:
           grep -Fqx 'CONFIG_BLK_DEV_DM=y' "$A04E_SRC/out/.config"
           # dm-linear is linked into dm-mod in this pinned Linux 4.19 tree;
           # CONFIG_DM_LINEAR is not a Kconfig symbol here.
+          # Keep this object-level proof in sync with the image workflow's CONFIG_BLK_DEV_DM check.
           test -s "$A04E_SRC/out/drivers/md/dm-linear.o"
           echo "PASS: device-mapper core and its built-in dm-linear target are present"
           test -s "$A04E_SRC/out/arch/arm64/boot/Image.gz"
