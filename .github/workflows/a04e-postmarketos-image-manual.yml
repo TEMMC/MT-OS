@@ -229,11 +229,11 @@ jobs:
             if [ -s "$candidate" ]; then BOOT_SOURCE="$candidate"; break; fi
           done
           ROOT_SOURCE=""
-          for candidate in "$EXPORTED/samsung-a04e-root.img" "$EXPORTED/root.img"; do
+          for candidate in "$EXPORTED/samsung-a04e.img" "$EXPORTED/samsung-a04e-root.img" "$EXPORTED/root.img"; do
             if [ -s "$candidate" ]; then ROOT_SOURCE="$candidate"; break; fi
           done
           if [ -z "$BOOT_SOURCE" ] || [ -z "$ROOT_SOURCE" ]; then
-            echo "Expected pmbootstrap boot.img and samsung-a04e-root.img exports were not found."
+            echo "Expected pmbootstrap boot.img and A04e root filesystem export (samsung-a04e.img) were not found."
             echo "Export directory:"
             find "$EXPORTED" -maxdepth 1 -printf '%y %p -> %l\\n'
             exit 1
