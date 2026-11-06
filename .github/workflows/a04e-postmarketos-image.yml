@@ -125,10 +125,14 @@ jobs:
           # checksum predates the latest config edits. Refreshing it in this isolated
           # CI overlay avoids modifying the repository or recompiling the kernel.
           KAPK="$PMAPORTS/device/downstream/linux-samsung-a04e/APKBUILD"
-          sed -i -E 's/^[0-9a-f]{128}  config-samsung-a04e\\.aarch64$/SKIP  config-samsung-a04e.aarch64/' "$KAPK"
-          # CONFIG_DM_LINEAR does not exist in this Linux 4.19 tree; dm-linear.o
-          # is provided by CONFIG_BLK_DEV_DM and was verified in the reused kernel.
-          sed -i '/^[[:space:]]*CONFIG_DM_LINEAR=y \\\\$/d' "$KAPK"
+          awk '
+            /config-samsung-a04e[.]aarch64$/ { print "SKIP  config-samsung-a04e.aarch64"; next }
+            /^[[:space:]]*CONFIG_DM_LINEAR=y/ { next }
+            { print }
+          ' "$KAPK" > "$KAPK.tmp"
+          mv "$KAPK.tmp" "$KAPK"
+          grep -Fq "SKIP  config-samsung-a04e.aarch64" "$KAPK"
+          ! grep -Fq "CONFIG_DM_LINEAR=y" "$KAPK"
           ln -sf "$PMB/pmbootstrap.py" "$HOME/.local/bin/pmbootstrap"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           {
