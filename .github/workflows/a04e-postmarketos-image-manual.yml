@@ -163,7 +163,7 @@ jobs:
           kernel = downstream
           user = pmos
           ui = phosh
-          extra_packages = modemmanager modemmanager-openrc networkmanager networkmanager-openrc iio-sensor-proxy iio-sensor-proxy-openrc
+          extra_packages = modemmanager,modemmanager-openrc,networkmanager,networkmanager-openrc,iio-sensor-proxy,iio-sensor-proxy-openrc
           keymap = us
           locale = en_US.UTF-8
           timezone = UTC
