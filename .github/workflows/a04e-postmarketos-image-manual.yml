@@ -196,15 +196,18 @@ jobs:
           TOOLS="$RUNNER_TEMP/android-lptools"
           git clone https://github.com/itsNileshHere/android-lptools.git "$TOOLS"
           git -C "$TOOLS" checkout b7b5c09916ab88074692006db7dab34256da6e24
-          (
-            cd "$TOOLS"
-            bash ./make.sh
-          )
+          # This pinned upstream revision already ships Linux host binaries in
+          # bin/. Its make.sh static rebuild currently produces an lpmake that
+          # segfaults on --help in the Ubuntu 22.04 runner. Use the upstream
+          # prebuilt tools instead, and fail early if any executable is unusable.
           for tool in lpmake lpdump lpunpack; do
-            test -x "$TOOLS/bin/$tool"
+            test -s "$TOOLS/bin/$tool"
+            chmod 0755 "$TOOLS/bin/$tool"
+            file "$TOOLS/bin/$tool"
           done
           "$TOOLS/bin/lpmake" --help >/dev/null
           "$TOOLS/bin/lpdump" --help >/dev/null 2>&1 || true
+          "$TOOLS/bin/lpunpack" 2>&1 | grep -qi 'usage\|super'
           echo "A04E_LPTOOLS=$TOOLS/bin" >> "$GITHUB_ENV"
 
       - name: Export and validate build outputs
