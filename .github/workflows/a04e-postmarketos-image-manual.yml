@@ -239,14 +239,37 @@ jobs:
             exit 1
           fi
           cp -L -- "$BOOT_SOURCE" "$OUT/boot.img"
-          cp -L -- "$ROOT_SOURCE" "$OUT/pmos_root.ext4.img"
 
-          # Normalize Android sparse rootfs input to a raw ext4 image if needed.
-          magic="$(od -An -tx1 -N4 "$OUT/pmos_root.ext4.img" | tr -d ' \\n')"
-          if [ "$magic" = "3aff26ed" ]; then
-            simg2img "$OUT/pmos_root.ext4.img" "$OUT/pmos_root.raw.img"
-            mv "$OUT/pmos_root.raw.img" "$OUT/pmos_root.ext4.img"
+          # pmbootstrap exports samsung-a04e.img as a whole GPT disk image,
+          # not as a standalone ext4 filesystem. Extract partition 2 (pmOS_root)
+          # before validating it or placing it in Android super.img.
+          ROOT_DISK="$RUNNER_TEMP/samsung-a04e-disk.img"
+          cp -L -- "$ROOT_SOURCE" "$ROOT_DISK"
+          LOOP_DEVICE="$(sudo losetup --find --show --partscan "$ROOT_DISK")"
+          cleanup_loop() {
+            if [ -n "${LOOP_DEVICE:-}" ]; then
+              sudo losetup --detach "$LOOP_DEVICE" 2>/dev/null || true
+            fi
+          }
+          trap cleanup_loop EXIT
+          sudo udevadm settle
+          ROOT_PART="${LOOP_DEVICE}p2"
+          if [ ! -b "$ROOT_PART" ]; then
+            echo "pmbootstrap disk image has no partition 2: $LOOP_DEVICE" >&2
+            sudo lsblk -o NAME,TYPE,FSTYPE,PARTLABEL "$LOOP_DEVICE" >&2
+            exit 1
           fi
+          ROOT_FSTYPE="$(sudo blkid -s TYPE -o value "$ROOT_PART")"
+          ROOT_LABEL="$(sudo blkid -s LABEL -o value "$ROOT_PART" || true)"
+          if [ "$ROOT_FSTYPE" != "ext4" ]; then
+            echo "Expected ext4 in pmOS_root partition 2, found: $ROOT_FSTYPE (label=$ROOT_LABEL)" >&2
+            exit 1
+          fi
+          sudo dd if="$ROOT_PART" of="$OUT/pmos_root.ext4.img" bs=4M status=progress conv=sparse
+          cleanup_loop
+          LOOP_DEVICE=""
+          trap - EXIT
+
           file "$OUT/pmos_root.ext4.img"
           e2fsck -fn "$OUT/pmos_root.ext4.img"
 
