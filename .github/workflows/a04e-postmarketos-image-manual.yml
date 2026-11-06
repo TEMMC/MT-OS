@@ -189,25 +189,24 @@ jobs:
             --password pmos --no-firewall --no-recommends
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 initfs build
 
-      - name: Build pinned Android logical-partition tools
+      - name: Prepare pinned Android logical-partition tools
         shell: bash
         run: |
           set -euo pipefail
           TOOLS="$RUNNER_TEMP/android-lptools"
           git clone https://github.com/itsNileshHere/android-lptools.git "$TOOLS"
           git -C "$TOOLS" checkout b7b5c09916ab88074692006db7dab34256da6e24
-          # This pinned upstream revision already ships Linux host binaries in
-          # bin/. Its make.sh static rebuild currently produces an lpmake that
-          # segfaults on --help in the Ubuntu 22.04 runner. Use the upstream
-          # prebuilt tools instead, and fail early if any executable is unusable.
+          # This upstream revision's lpmake has a broken --help option mapping:
+          # --help is routed to --output with a null optarg and segfaults.
+          # Do not execute help/usage probes here. Validate file presence and
+          # host architecture only; real lpmake/lpdump/lpunpack operations below
+          # exercise the tools against the actual generated images.
           for tool in lpmake lpdump lpunpack; do
             test -s "$TOOLS/bin/$tool"
             chmod 0755 "$TOOLS/bin/$tool"
             file "$TOOLS/bin/$tool"
           done
-          "$TOOLS/bin/lpmake" --help >/dev/null
-          "$TOOLS/bin/lpdump" --help >/dev/null 2>&1 || true
-          "$TOOLS/bin/lpunpack" 2>&1 | grep -qi 'usage\|super'
+          file "$TOOLS/bin/lpmake" | grep -Eqi 'x86-64|x86_64|ELF 64-bit'
           echo "A04E_LPTOOLS=$TOOLS/bin" >> "$GITHUB_ENV"
 
       - name: Export and validate build outputs
