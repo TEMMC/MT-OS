@@ -30,6 +30,6 @@ package() {
 # Heimdall boot-image packaging is configured from the inspected stock
 # Android header-v2 layout. Actual device flashing remains unvalidated.
 sha512sums="
-f285c515b288661d4c8451eec4bf1c2ee899856121ad63a895bbd14d6475f9ff66e762508ff1d389ae7f0e3c1e447692d696920b84e2607f617037629e0ad0c8  deviceinfo
+ede46727ad2a246da707a154d9bffd2f86855fa7a4a0ed5a23cd35d8e79d346fdc06ee793b0dcf588cd82fdfad2c08fb23f48a24bdb7c921f8772bb6b097b286  deviceinfo
 c7839ebcaf0f17801f7d7cd045e09d94c9b6c35be4f82a6d79a234628a94d39ea4916bf4c053ca10950be7ce27d4baf0fa741ee50f5d773f363500d6d9850be5  kernel-cmdline.conf
 "
