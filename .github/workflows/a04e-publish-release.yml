@@ -1,4 +1,4 @@
-name: Publish A04e postmarketOS build release
+name: Publish latest successful A04e postmarketOS image
 
 on:
   workflow_run:
@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: Successful A04e image-build workflow run ID
-        required: true
+        description: "Successful A04e image-build run ID (blank selects the latest successful image build on this branch)"
+        required: false
         type: string
 
 permissions:
@@ -20,40 +20,71 @@ permissions:
   contents: write
 
 concurrency:
-  group: a04e-release-${{ github.event.workflow_run.id || inputs.run_id }}
+  group: a04e-postmarketos-release
   cancel-in-progress: false
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'linux/a04e-postmarketos-port') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     steps:
-      - name: Resolve and verify successful image-build run
+      - name: Select the latest successful A04e image build
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
-          MANUAL_RUN_ID: ${{ inputs.run_id }}
-          EVENT_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          EVENT_PATH: ${{ github.event.workflow_run.path }}
           EVENT_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          MANUAL_RUN_ID: ${{ inputs.run_id }}
         shell: bash
         run: |
           set -euo pipefail
-          RUN_ID="${EVENT_RUN_ID:-$MANUAL_RUN_ID}"
-          [[ "$RUN_ID" =~ ^[0-9]+$ ]]
+
+          if [[ -n "${MANUAL_RUN_ID:-}" ]]; then
+            RUN_ID="$MANUAL_RUN_ID"
+          elif [[ -n "${EVENT_RUN_ID:-}" ]]; then
+            RUN_ID="$EVENT_RUN_ID"
+            test "$EVENT_CONCLUSION" = "success"
+          else
+            # Search successful runs on the A04e port branch and select the
+            # newest run belonging to one of the two A04e image workflows.
+            RUN_ID="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=linux%2Fa04e-postmarketos-port&status=success&per_page=100" \
+              --jq '[.workflow_runs[]
+                | select(.name == "A04e postmarketOS image build")
+                | select(.path == ".github/workflows/a04e-postmarketos-image-manual.yml"
+                      or .path == ".github/workflows/a04e-postmarketos-image.yml")]
+                | sort_by(.created_at) | last | .id // empty')"
+          fi
+
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || {
+            echo "No successful A04e image-build run was found." >&2
+            exit 1
+          }
+
           RUN="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID")"
           test "$(jq -r '.name' <<< "$RUN")" = "A04e postmarketOS image build"
-          test "$(jq -r '.head_branch' <<< "$RUN")" = "linux/a04e-postmarketos-port"
           test "$(jq -r '.conclusion' <<< "$RUN")" = "success"
-          if [ -n "$EVENT_RUN_ID" ]; then
-            test "$EVENT_BRANCH" = "linux/a04e-postmarketos-port"
-            test "$EVENT_CONCLUSION" = "success"
+          test "$(jq -r '.head_branch' <<< "$RUN")" = "linux/a04e-postmarketos-port"
+          SOURCE_PATH="$(jq -r '.path' <<< "$RUN")"
+          case "$SOURCE_PATH" in
+            .github/workflows/a04e-postmarketos-image-manual.yml|.github/workflows/a04e-postmarketos-image.yml) ;;
+            *) echo "Run $RUN_ID is not from an approved A04e image workflow: $SOURCE_PATH" >&2; exit 1 ;;
+          esac
+
+          if [[ -n "${EVENT_RUN_ID:-}" ]]; then
+            test "$EVENT_PATH" = "$SOURCE_PATH"
           fi
+
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
           echo "run_number=$(jq -r '.run_number' <<< "$RUN")" >> "$GITHUB_OUTPUT"
           echo "source_sha=$(jq -r '.head_sha' <<< "$RUN")" >> "$GITHUB_OUTPUT"
+          echo "source_path=$SOURCE_PATH" >> "$GITHUB_OUTPUT"
 
-      - name: Download the original build ZIP artifact
+      - name: Find the original image ZIP artifact
         id: artifact
         env:
           GH_TOKEN: ${{ github.token }}
@@ -61,54 +92,121 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ARTIFACTS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts")"
-          ARTIFACT_ID="$(jq -r '[.artifacts[] | select(.name == "a04e-postmarketos-bringup-image" and .expired == false)][0].id // empty' <<< "$ARTIFACTS")"
-          test -n "$ARTIFACT_ID" || {
-            echo "The successful run has no unexpired a04e-postmarketos-bringup-image artifact." >&2
+          ARTIFACTS="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100")"
+          ARTIFACT="$(jq -c '[.artifacts[]
+            | select(.name == "a04e-postmarketos-bringup-image" and .expired == false)]
+            | sort_by(.created_at) | last // empty' <<< "$ARTIFACTS")"
+          test -n "$ARTIFACT" || {
+            echo "The selected successful build has no unexpired a04e-postmarketos-bringup-image artifact." >&2
             exit 1
           }
-          ZIP="MT-OS-A04e-postmarketOS-build-$RUN_ID.zip"
-          curl --fail --location --silent --show-error \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
-            --output "$RUNNER_TEMP/$ZIP"
-          unzip -t "$RUNNER_TEMP/$ZIP"
-          for required in boot.img super.img BUILD-INFO.txt SHA256SUMS.txt SUPER-METADATA.txt; do
-            unzip -Z1 "$RUNNER_TEMP/$ZIP" | grep -Eq "(^|/)$required$" || {
-              echo "Required file missing from artifact ZIP: $required" >&2
-              exit 1
-            }
-          done
-          echo "zip_path=$RUNNER_TEMP/$ZIP" >> "$GITHUB_OUTPUT"
-          echo "zip_name=$ZIP" >> "$GITHUB_OUTPUT"
-          echo "artifact_id=$ARTIFACT_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Publish ZIP as a GitHub Release asset
+          ARTIFACT_ID="$(jq -r '.id' <<< "$ARTIFACT")"
+          ARTIFACT_DIGEST="$(jq -r '.digest // empty' <<< "$ARTIFACT")"
+          echo "artifact_id=$ARTIFACT_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact_digest=$ARTIFACT_DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Download and verify the original ZIP
+        id: download
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.source.outputs.run_id }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact_id }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact_digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET="a04e-postmarketos-SM-A042F-run-$RUN_ID.zip"
+          ZIP="$RUNNER_TEMP/$ASSET"
+          EXTRACT="$RUNNER_TEMP/a04e-artifact-check"
+          mkdir -p "$EXTRACT"
+
+          curl --fail --location --retry 3 --retry-all-errors --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
+            --output "$ZIP"
+
+          test -s "$ZIP"
+          unzip -t "$ZIP"
+          if [[ -n "$ARTIFACT_DIGEST" ]]; then
+            EXPECTED="${ARTIFACT_DIGEST#sha256:}"
+            ACTUAL="$(sha256sum "$ZIP" | awk '{print $1}')"
+            test "$ACTUAL" = "$EXPECTED" || {
+              echo "Downloaded artifact digest mismatch: expected $EXPECTED, got $ACTUAL" >&2
+              exit 1
+            }
+          fi
+
+          unzip -q "$ZIP" -d "$EXTRACT"
+          STAGE="$RUNNER_TEMP/a04e-release-contents"
+          mkdir -p "$STAGE"
+          for file in boot.img super.img BUILD-INFO.txt SHA256SUMS.txt SUPER-METADATA.txt; do
+            SOURCE="$(find "$EXTRACT" -type f -name "$file" -print -quit)"
+            test -n "$SOURCE" && test -s "$SOURCE" || {
+              echo "Required file missing or empty in artifact: $file" >&2
+              exit 1
+            }
+            cp "$SOURCE" "$STAGE/$file"
+          done
+
+          # The build manifest records runner-absolute paths. Normalize each
+          # entry to its basename before checking the files from the ZIP.
+          awk 'NF >= 2 {
+            name=$2
+            sub(/^.*\//, "", name)
+            if (name !~ /^[A-Za-z0-9._-]+$/) exit 2
+            print $1 "  " name
+          }' "$STAGE/SHA256SUMS.txt" > "$STAGE/SHA256SUMS.normalized"
+          (cd "$STAGE" && sha256sum --check --strict SHA256SUMS.normalized)
+
+          test "$(stat -c %s "$STAGE/super.img")" -eq 6786383872
+          BOOT_SIZE="$(stat -c %s "$STAGE/boot.img")"
+          test "$BOOT_SIZE" -gt 0
+          test "$BOOT_SIZE" -le 33554432
+          grep -Fq "Samsung Galaxy A04e SM-A042F" "$STAGE/BUILD-INFO.txt"
+
+          sha256sum "$ZIP" > "$ZIP.sha256"
+          echo "zip_path=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "zip_name=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "sha_path=$ZIP.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the ZIP as a prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.source.outputs.run_id }}
+          RUN_NUMBER: ${{ steps.source.outputs.run_number }}
           SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
-          ZIP_PATH: ${{ steps.artifact.outputs.zip_path }}
+          ZIP_PATH: ${{ steps.download.outputs.zip_path }}
+          SHA_PATH: ${{ steps.download.outputs.sha_path }}
         shell: bash
         run: |
           set -euo pipefail
           TAG="a04e-postmarketos-run-$RUN_ID"
-          TITLE="MT-OS Samsung A04e postmarketOS build (run $RUN_ID)"
-          NOTES="$RUNNER_TEMP/release-notes.md"
+          TITLE="MT-OS Samsung Galaxy A04e postmarketOS image — build $RUN_NUMBER"
+          NOTES="$RUNNER_TEMP/a04e-release-notes.md"
+
           cat > "$NOTES" <<EOF
-          Automated release of the validated A04e postmarketOS build artifact.
+          Automated release of the original successful A04e postmarketOS Actions artifact.
 
-          - Source branch: `linux/a04e-postmarketos-port`
-          - Source commit: `$SOURCE_SHA`
-          - Build workflow run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$RUN_ID
-          - Asset: original Actions artifact ZIP, checked for ZIP integrity and required image/metadata files.
+          - Device: Samsung Galaxy A04e SM-A042F (A-only)
+          - Source branch: linux/a04e-postmarketos-port
+          - Source commit: $SOURCE_SHA
+          - Successful image-build run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$RUN_ID
+          - ZIP contents: boot.img, super.img, BUILD-INFO.txt, SHA256SUMS.txt, SUPER-METADATA.txt
+          - The accompanying .sha256 file verifies the downloaded release ZIP.
 
-          **Important:** This is an experimental bring-up build. CI structural validation is not proof of handset boot or hardware functionality. Read `BUILD-INFO.txt` before use. The image is not declared flash-safe or runtime-tested.
+          **Experimental bring-up build. Not runtime-tested on the handset and not validated as flash-safe.** CI structural checks do not prove boot, display, touch, charging, Wi-Fi, Bluetooth, audio, modem, calls/SMS, or suspend functionality. The super image replaces Android logical partitions. Read BUILD-INFO.txt and preserve stock boot, super, vbmeta, and recovery backups before any test.
           EOF
+
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP_PATH" --clobber
+            gh release upload "$TAG" "$ZIP_PATH" "$SHA_PATH" --clobber
           else
-            gh release create "$TAG" "$ZIP_PATH" --title "$TITLE" --notes-file "$NOTES"
+            gh release create "$TAG" "$ZIP_PATH" "$SHA_PATH" \
+              --target "$SOURCE_SHA" \
+              --title "$TITLE" \
+              --notes-file "$NOTES" \
+              --prerelease
           fi
-          echo "Published release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+
+          echo "Published: https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
