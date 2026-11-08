@@ -172,7 +172,9 @@ jobs:
           kernel = downstream
           user = pmos
           ui = phosh
-          extra_packages = modemmanager modemmanager-openrc networkmanager networkmanager-openrc iio-sensor-proxy iio-sensor-proxy-openrc
+          # ui=phosh selects the postmarketOS Phosh UI; list the shell and compositor
+          # explicitly as well so the resulting rootfs cannot omit either package.
+          extra_packages = postmarketos-ui-phosh phosh phoc modemmanager modemmanager-openrc networkmanager networkmanager-openrc iio-sensor-proxy iio-sensor-proxy-openrc
           keymap = us
           locale = en_US.UTF-8
           timezone = UTC
@@ -198,22 +200,40 @@ jobs:
             --password pmos --no-firewall --no-recommends
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 initfs build
 
-      - name: Build pinned Android logical-partition tools
+      - name: Verify Phosh and Phoc packages in the installed rootfs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Check the actual target rootfs package database and executable files,
+          # not just the pmbootstrap UI selection.
+          pmbootstrap -c "$A04E_PMB_CONFIG" chroot -r -- sh -euc '
+            for package in postmarketos-ui-phosh phosh phoc; do
+              apk info -e "$package" >/dev/null
+              echo "Installed package: $package"
+            done
+            test -x /usr/bin/phosh
+            test -x /usr/bin/phoc
+            echo "Phosh and Phoc executables are present"
+          '
+
+      - name: Prepare pinned Android logical-partition tools
         shell: bash
         run: |
           set -euo pipefail
           TOOLS="$RUNNER_TEMP/android-lptools"
           git clone https://github.com/itsNileshHere/android-lptools.git "$TOOLS"
           git -C "$TOOLS" checkout b7b5c09916ab88074692006db7dab34256da6e24
-          (
-            cd "$TOOLS"
-            bash ./make.sh
-          )
+          # This upstream revision's lpmake has a broken --help option mapping:
+          # --help is routed to --output with a null optarg and segfaults.
+          # Do not execute help/usage probes here. Validate file presence and
+          # host architecture only; real lpmake/lpdump/lpunpack operations below
+          # exercise the tools against the actual generated images.
           for tool in lpmake lpdump lpunpack; do
-            test -x "$TOOLS/bin/$tool"
+            test -s "$TOOLS/bin/$tool"
+            chmod 0755 "$TOOLS/bin/$tool"
+            file "$TOOLS/bin/$tool"
           done
-          "$TOOLS/bin/lpmake" --help >/dev/null
-          "$TOOLS/bin/lpdump" --help >/dev/null 2>&1 || true
+          file "$TOOLS/bin/lpmake" | grep -Eqi 'x86-64|x86_64|ELF 64-bit'
           echo "A04E_LPTOOLS=$TOOLS/bin" >> "$GITHUB_ENV"
 
       - name: Export and validate build outputs
@@ -236,26 +256,48 @@ jobs:
             if [ -s "$candidate" ]; then BOOT_SOURCE="$candidate"; break; fi
           done
           ROOT_SOURCE=""
-          for candidate in "$EXPORTED/samsung-a04e-root.img" "$EXPORTED/root.img"; do
+          for candidate in "$EXPORTED/samsung-a04e.img" "$EXPORTED/samsung-a04e-root.img" "$EXPORTED/root.img"; do
             if [ -s "$candidate" ]; then ROOT_SOURCE="$candidate"; break; fi
           done
           if [ -z "$BOOT_SOURCE" ] || [ -z "$ROOT_SOURCE" ]; then
-            echo "Expected pmbootstrap boot.img and samsung-a04e-root.img exports were not found."
+            echo "Expected pmbootstrap boot.img and A04e root filesystem export (samsung-a04e.img) were not found."
             echo "Export directory:"
             find "$EXPORTED" -maxdepth 1 -printf '%y %p -> %l\\n'
             exit 1
           fi
           cp -L -- "$BOOT_SOURCE" "$OUT/boot.img"
-          cp -L -- "$ROOT_SOURCE" "$OUT/pmos_root.ext4.img"
 
-          # Normalize Android sparse rootfs input to a raw ext4 image if needed.
-          magic="$(od -An -tx1 -N4 "$OUT/pmos_root.ext4.img" | tr -d ' \\n')"
-          if [ "$magic" = "3aff26ed" ]; then
-            simg2img "$OUT/pmos_root.ext4.img" "$OUT/pmos_root.raw.img"
-            mv "$OUT/pmos_root.raw.img" "$OUT/pmos_root.ext4.img"
+          # pmbootstrap exports samsung-a04e.img as a whole GPT disk image,
+          # not as a standalone ext4 filesystem. Extract partition 2 (pmOS_root)
+          # before validating it or placing it in Android super.img.
+          ROOT_DISK="$RUNNER_TEMP/samsung-a04e-disk.img"
+          cp -L -- "$ROOT_SOURCE" "$ROOT_DISK"
+          LOOP_DEVICE="$(sudo losetup --find --show --partscan "$ROOT_DISK")"
+          cleanup_loop() {
+            if [ -n "${LOOP_DEVICE:-}" ]; then
+              sudo losetup --detach "$LOOP_DEVICE" 2>/dev/null || true
+            fi
+          }
+          trap cleanup_loop EXIT
+          sudo udevadm settle
+          ROOT_PART="${LOOP_DEVICE}p2"
+          if [ ! -b "$ROOT_PART" ]; then
+            echo "pmbootstrap disk image has no partition 2: $LOOP_DEVICE" >&2
+            sudo lsblk -o NAME,TYPE,FSTYPE,PARTLABEL "$LOOP_DEVICE" >&2
+            exit 1
           fi
+          ROOT_FSTYPE="$(sudo blkid -s TYPE -o value "$ROOT_PART")"
+          ROOT_LABEL="$(sudo blkid -s LABEL -o value "$ROOT_PART" || true)"
+          if [ "$ROOT_FSTYPE" != "ext4" ]; then
+            echo "Expected ext4 in pmOS_root partition 2, found: $ROOT_FSTYPE (label=$ROOT_LABEL)" >&2
+            exit 1
+          fi
+          sudo dd if="$ROOT_PART" of="$OUT/pmos_root.ext4.img" bs=4M status=progress conv=sparse
+          cleanup_loop
+          LOOP_DEVICE=""
+          trap - EXIT
+
           file "$OUT/pmos_root.ext4.img"
-          e2fsck -fn "$OUT/pmos_root.ext4.img"
 
           # Verify Android boot header v2, the actual page size, and the root
           # device passed to the initramfs. The stock BOOT partition is 32 MiB.
@@ -297,8 +339,7 @@ jobs:
           "$A04E_LPTOOLS/lpmake" \
             --metadata-size 65536 \
             --metadata-slots 2 \
-            --super-name super \
-            --device "super:$SUPER_SIZE" \
+            --device-size "$SUPER_SIZE" \
             --alignment "$ALIGN" \
             --alignment-offset 0 \
             --group "main:$GROUP_SIZE" \
@@ -316,7 +357,18 @@ jobs:
           "$A04E_LPTOOLS/lpunpack" "$OUT/super.img" "$VERIFY"
           test -s "$VERIFY/pmos_root.img"
           cmp -n "$ROOT_SIZE" "$OUT/pmos_root.ext4.img" "$VERIFY/pmos_root.img"
-          e2fsck -fn "$VERIFY/pmos_root.img"
+          # Ubuntu 22.04's e2fsck (1.46.5) cannot read the ext4 orphan_file
+          # feature emitted by current postmarketOS edge. Validate both copies
+          # with Ubuntu 24.04's newer e2fsprogs inside a disposable container.
+          docker run --rm \
+            -v "$OUT:/images:ro" \
+            -v "$VERIFY:/verify:ro" \
+            ubuntu:24.04 bash -euc '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends e2fsprogs
+              e2fsck -fn /images/pmos_root.ext4.img
+              e2fsck -fn /verify/pmos_root.img
+            '
 
           cat > "$OUT/BUILD-INFO.txt" <<INFO
           Target: Samsung Galaxy A04e SM-A042F (A-only)
