@@ -39,6 +39,10 @@ deviceinfo_append_dtb="false"
 deviceinfo_bootimg_qcdt="false"
 deviceinfo_bootimg_dtb_second="false"
 
-# Legacy MTK framebuffer/LCM is present, but MT6765 DRM/KMS is not ported.
-# Keep this false until a DRM/KMS driver and working compositor are verified.
+# The current A04e kernel exposes the vendor MTK framebuffer/LCM path, not a
+# verified DRM/KMS device. Phoc's normal wlroots DRM backend needs DRM/KMS;
+# setting this flag true would falsely advertise hardware support and will not
+# create a DRM driver. Keep false until a real DRM/KMS driver is ported and tested.
+# Phosh/Phoc packages are still selected for rootfs packaging, but display
+# startup on this legacy framebuffer remains an explicit bring-up task.
 deviceinfo_drm="false"
