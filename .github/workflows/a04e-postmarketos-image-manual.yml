@@ -163,7 +163,9 @@ jobs:
           kernel = downstream
           user = pmos
           ui = phosh
-          extra_packages = modemmanager,modemmanager-openrc,networkmanager,networkmanager-openrc,iio-sensor-proxy,iio-sensor-proxy-openrc
+          # ui=phosh selects the postmarketOS Phosh UI; list the shell and compositor
+          # explicitly as well so the resulting rootfs cannot omit either package.
+          extra_packages = postmarketos-ui-phosh,phosh,phoc,modemmanager,modemmanager-openrc,networkmanager,networkmanager-openrc,iio-sensor-proxy,iio-sensor-proxy-openrc
           keymap = us
           locale = en_US.UTF-8
           timezone = UTC
@@ -188,6 +190,22 @@ jobs:
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 --assume-yes install \
             --password pmos --no-firewall --no-recommends
           pmbootstrap -c "$A04E_PMB_CONFIG" --jobs 2 initfs build
+
+      - name: Verify Phosh and Phoc packages in the installed rootfs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Check the actual target rootfs package database and executable files,
+          # not just the pmbootstrap UI selection.
+          pmbootstrap -c "$A04E_PMB_CONFIG" chroot -r -- sh -euc '
+            for package in postmarketos-ui-phosh phosh phoc; do
+              apk info -e "$package" >/dev/null
+              echo "Installed package: $package"
+            done
+            test -x /usr/bin/phosh
+            test -x /usr/bin/phoc
+            echo "Phosh and Phoc executables are present"
+          '
 
       - name: Prepare pinned Android logical-partition tools
         shell: bash
