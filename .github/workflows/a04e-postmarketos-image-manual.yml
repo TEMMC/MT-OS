@@ -165,7 +165,7 @@ jobs:
           ui = phosh
           # ui=phosh selects the postmarketOS Phosh UI; list the shell and compositor
           # explicitly as well so the resulting rootfs cannot omit either package.
-          extra_packages = postmarketos-ui-phosh,phosh,phoc,modemmanager,modemmanager-openrc,networkmanager,networkmanager-openrc,iio-sensor-proxy,iio-sensor-proxy-openrc
+          extra_packages = postmarketos-ui-phosh phosh phoc modemmanager modemmanager-openrc networkmanager networkmanager-openrc iio-sensor-proxy iio-sensor-proxy-openrc
           keymap = us
           locale = en_US.UTF-8
           timezone = UTC
